@@ -203,7 +203,7 @@ monitoring:
 #### Pull approach
 
 *vmanomaly* can export internal metrics in Prometheus exposition format at `/metrics` page.
-These metrics can be scraped via [vmagent](https://docs.victoriametrics.com/vmagent.html) or Prometheus.
+These metrics can be scraped via [vmagent](https://docs.victoriametrics.com/vmagent/) or Prometheus.
 
 In order to enable pull approach, specify `pull` section in config file:
 
@@ -274,7 +274,7 @@ vm_license_expires_at 1.6963776e+09
 vm_license_expires_in_seconds 4.886608e+06
 ```
 
-Example alerts for [vmalert](https://docs.victoriametrics.com/vmalert.html):
+Example alerts for [vmalert](https://docs.victoriametrics.com/vmalert/):
 
 ```yaml
 groups:
