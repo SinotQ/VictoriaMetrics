@@ -333,7 +333,7 @@ func requestHandler(w http.ResponseWriter, r *http.Request) bool {
 			zabbixconnectorHistoryErrors.Inc()
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusBadRequest)
-			fmt.Fprintf(w, `{"error":%s}`, strconv.Quote(err.Error()))
+			fmt.Fprintf(w, `{"error":%q}`, err.Error())
 			return true
 		}
 		w.WriteHeader(http.StatusOK)
