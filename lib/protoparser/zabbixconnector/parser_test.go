@@ -1,28 +1,34 @@
 package zabbixconnector
 
 import (
+	"flag"
 	"fmt"
+	"os"
 	"reflect"
 	"testing"
 )
 
 func TestRowsUnmarshalFailure(t *testing.T) {
-	f := func(s string, par byte) {
+	f := func(s string, fl []string) {
 		t.Helper()
+
+		os.Args = fl
+		flag.Parse()
+
 		var rows Rows
-		rows.Unmarshal(s, par)
+		rows.Unmarshal(s)
 		if len(rows.Rows) != 0 {
 			t.Fatalf("expecting zero rows; got %d rows", len(rows.Rows))
 		}
 
 		// Try again
-		rows.Unmarshal(s, par)
+		rows.Unmarshal(s)
 		if len(rows.Rows) != 0 {
 			t.Fatalf("expecting zero rows; got %d rows", len(rows.Rows))
 		}
 	}
 
-	par := byte(0b00000011)
+	par := []string{"test", "-zabbixconnector.addGroups", "1", "-zabbixconnector.addEmptyTags", "1"}
 	// Invalid json line
 	f("", par)
 	f("\n", par)
@@ -83,22 +89,24 @@ func TestRowsUnmarshalFailure(t *testing.T) {
 	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
 	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":1,"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
 	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":{},"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
-
-	//f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
 }
 
 func TestRowsUnmarshalSuccess(t *testing.T) {
-	f := func(s string, par byte, rowsExpected *Rows) {
+	f := func(s string, fl []string, rowsExpected *Rows) {
 		t.Helper()
+
+		os.Args = fl
+		flag.Parse()
+
 		var rows Rows
-		rows.Unmarshal(s, par)
+		rows.Unmarshal(s)
 
 		if err := compareRows(&rows, rowsExpected); err != nil {
 			t.Fatalf("unexpected rows: %s;\ngot\n%+v;\nwant\n%+v", err, rows.Rows, rowsExpected.Rows)
 		}
 
 		// Try unmarshaling again
-		rows.Unmarshal(s, par)
+		rows.Unmarshal(s)
 		if err := compareRows(&rows, rowsExpected); err != nil {
 			t.Fatalf("unexpected rows at second unmarshal: %s;\ngot\n%+v;\nwant\n%+v", err, rows.Rows, rowsExpected.Rows)
 		}
@@ -110,7 +118,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 	}
 
 	// Add groups and empty tags
-	par := byte(0b00000011)
+	par := []string{"test", "-zabbixconnector.addGroups", "1", "-zabbixconnector.addEmptyTags", "1"}
 	// Empty line
 	f("", par, &Rows{})
 	f("\n\n", par, &Rows{})
@@ -217,8 +225,8 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 
 	// Multiple lines
 	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}
-{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}
-`, par,
+	{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}
+	`, par,
 		&Rows{
 			Rows: []Row{
 				{
@@ -282,9 +290,9 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 
 	// Multiple lines with invalid lines in the middle.
 	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}
-failed line
+	failed line
 
-{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}`, par,
+	{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}`, par,
 		&Rows{
 			Rows: []Row{
 				{
@@ -348,7 +356,7 @@ failed line
 
 	// No newline after the second line.
 	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}
-{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}`, par,
+	{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}`, par,
 		&Rows{
 			Rows: []Row{
 				{
@@ -411,13 +419,12 @@ failed line
 		})
 
 	// Add empty tags and skip groups
-	par = byte(0b00000010)
-
+	par = []string{"test", "-zabbixconnector.addGroups", "", "-zabbixconnector.addEmptyTags", "1"}
 	// Multiple lines with invalid lines in the middle.
 	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}
-failed line
+	failed line
 
-{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}`, par,
+	{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}`, par,
 		&Rows{
 			Rows: []Row{
 				{
@@ -472,13 +479,13 @@ failed line
 		})
 
 	// Add groups and skip empty tags
-	par = byte(0b00000001)
+	par = []string{"test", "-zabbixconnector.addGroups", "1", "-zabbixconnector.addEmptyTags", ""}
 
 	// Multiple lines with invalid lines in the middle.
 	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}
-failed line
+	failed line
 
-{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}`, par,
+	{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}`, par,
 		&Rows{
 			Rows: []Row{
 				{
@@ -537,7 +544,7 @@ failed line
 		})
 
 	// skip groups and empty tags
-	par = byte(0b00000000)
+	par = []string{"test", "-zabbixconnector.addGroups", "", "-zabbixconnector.addEmptyTags", ""}
 
 	// Multiple lines with invalid lines in the middle.
 	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}

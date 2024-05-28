@@ -2,7 +2,6 @@ package stream
 
 import (
 	"bufio"
-	"flag"
 	"fmt"
 	"io"
 	"sync"
@@ -19,8 +18,6 @@ import (
 var (
 	maxLineLen = flagutil.NewBytes("zabbixconnector.maxLineLen", 32*1024*1024, "The maximum length in bytes of a single line accepted by "+
 		"/zabbixconnector/api/v1/history")
-	addGroups    = flag.Bool("zabbixconnector.addGroups", false, "Enable adding Zabbix host groups to labels (group_name=\"1\").")
-	addEmptyTags = flag.Bool("zabbixconnector.addEmptyTags", false, "Enable adding Zabbix tags without values to labels (tag_name=\"1\").")
 )
 
 // Parse parses Zabbix Connector http lines from req and calls callback for the parsed rows.
@@ -47,12 +44,6 @@ func Parse(r io.Reader, isGzipped bool, callback func(rows []zabbixconnector.Row
 		uw := getUnmarshalWork()
 		uw.ctx = ctx
 		uw.callback = callback
-		if *addGroups {
-			uw.extparams |= zabbixconnector.ADDGROUPS
-		}
-		if *addEmptyTags {
-			uw.extparams |= zabbixconnector.ADDEMPTYTAGS
-		}
 		uw.reqBuf, ctx.reqBuf = ctx.reqBuf, uw.reqBuf
 		ctx.wg.Add(1)
 		common.ScheduleUnmarshalWork(uw)
@@ -179,7 +170,7 @@ func (uw *unmarshalWork) runCallback(rows []zabbixconnector.Row) {
 
 // Unmarshal implements common.UnmarshalWork
 func (uw *unmarshalWork) Unmarshal() {
-	uw.rows.Unmarshal(bytesutil.ToUnsafeString(uw.reqBuf), uw.extparams)
+	uw.rows.Unmarshal(bytesutil.ToUnsafeString(uw.reqBuf))
 	rows := uw.rows.Rows
 	rowsRead.Add(len(rows))
 

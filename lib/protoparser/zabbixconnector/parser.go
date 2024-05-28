@@ -1,6 +1,7 @@
 package zabbixconnector
 
 import (
+	"flag"
 	"fmt"
 	"strings"
 
@@ -9,16 +10,17 @@ import (
 	"github.com/valyala/fastjson"
 )
 
-const (
-	ADDGROUPS    byte = 0b00000001
-	ADDEMPTYTAGS byte = 0b00000010
-	EMPTYVALUE   byte = 49 // "1"
+var (
+	addGroups    = flag.String("zabbixconnector.addGroups", "", "Enable adding Zabbix host groups to labels and set value for these labels.")
+	addEmptyTags = flag.String("zabbixconnector.addEmptyTags", "", "Enable adding Zabbix tags without values to labels and set value for these labels.")
 )
 
+// Rows represents Zabbix Connector lines.
 type Rows struct {
 	Rows []Row
 }
 
+// Reset resets rs.
 func (rs *Rows) Reset() {
 	for i := range rs.Rows {
 		rs.Rows[i].reset()
@@ -26,11 +28,12 @@ func (rs *Rows) Reset() {
 	rs.Rows = rs.Rows[:0]
 }
 
-func (rs *Rows) Unmarshal(s string, par byte) {
-	rs.Rows = unmarshalRows(rs.Rows[:0], s, par)
+// Unmarshal unmarshals Zabbix Connector lines from s.
+func (rs *Rows) Unmarshal(s string) {
+	rs.Rows = unmarshalRows(rs.Rows[:0], s)
 }
 
-// Row is a single Zabbix Connector row
+// Row is a single Zabbix Connector line
 type Row struct {
 	Tags      []Tag
 	Value     float64
@@ -60,7 +63,7 @@ func (r *Row) addTag() *Tag {
 	return tag
 }
 
-func (r *Row) unmarshal(o *fastjson.Value, par byte) error {
+func (r *Row) unmarshal(o *fastjson.Value) error {
 	r.reset()
 
 	host := o.GetObject("host")
@@ -112,7 +115,8 @@ func (r *Row) unmarshal(o *fastjson.Value, par byte) error {
 	// See https://www.zabbix.com/documentation/current/en/manual/appendix/protocols/real_time_export#item-values
 	r.Timestamp = cl*1e3 + ns/1e6
 
-	if (par & ADDGROUPS) != 0 {
+	addGroups := []byte(*addGroups)
+	if len(addGroups) != 0 {
 		groups, err := getArray(o, "groups")
 		if err != nil {
 			return fmt.Errorf("missing `groups` element, %s", err)
@@ -125,29 +129,29 @@ func (r *Row) unmarshal(o *fastjson.Value, par byte) error {
 
 			tag = r.addTag()
 			tag.Key = append(tag.Key[:0], k...)
-			tag.Value = append(tag.Value[:0], EMPTYVALUE)
+			tag.Value = append(tag.Value[:0], addGroups...)
 		}
 	}
 
-	skipEmptyTags := (par & ADDEMPTYTAGS) == 0
-	item_tags, err := getArray(o, "item_tags")
+	addEmptyTags := []byte(*addEmptyTags)
+	itemTags, err := getArray(o, "item_tags")
 	if err != nil {
 		return fmt.Errorf("missing `item_tags` element, %s", err)
 	}
-	for _, t := range item_tags {
+	for _, t := range itemTags {
 		k := t.GetStringBytes("tag")
 		if len(k) == 0 {
 			continue
 		}
 
 		v := t.GetStringBytes("value")
-		if len(v) == 0 && skipEmptyTags {
+		if len(v) == 0 && len(addEmptyTags) == 0 {
 			continue
 		}
 		tag = r.addTag()
 		tag.Key = append(tag.Key[:0], k...)
 		if len(v) == 0 {
-			tag.Value = append(tag.Value[:0], EMPTYVALUE)
+			tag.Value = append(tag.Value[:0], addEmptyTags...)
 		} else {
 			tag.Value = append(tag.Value[:0], v...)
 		}
@@ -195,6 +199,7 @@ func getArray(o *fastjson.Value, k string) ([]*fastjson.Value, error) {
 	}
 }
 
+// Tag represents metric tag
 type Tag struct {
 	Key   []byte
 	Value []byte
@@ -205,14 +210,14 @@ func (t *Tag) reset() {
 	t.Value = t.Value[:0]
 }
 
-func unmarshalRows(dst []Row, s string, par byte) []Row {
+func unmarshalRows(dst []Row, s string) []Row {
 	for len(s) > 0 {
 		n := strings.IndexByte(s, '\n')
 		if n < 0 {
 			// The last line.
-			return unmarshalRow(dst, s, par)
+			return unmarshalRow(dst, s)
 		}
-		dst = unmarshalRow(dst, s[:n], par)
+		dst = unmarshalRow(dst, s[:n])
 		s = s[n+1:]
 	}
 	return dst
@@ -220,7 +225,7 @@ func unmarshalRows(dst []Row, s string, par byte) []Row {
 
 var jsonParserPool fastjson.ParserPool
 
-func unmarshalRow(dst []Row, s string, par byte) []Row {
+func unmarshalRow(dst []Row, s string) []Row {
 	p := jsonParserPool.Get()
 	defer jsonParserPool.Put(p)
 
@@ -256,7 +261,7 @@ func unmarshalRow(dst []Row, s string, par byte) []Row {
 		dst = append(dst, Row{})
 	}
 	r := &dst[len(dst)-1]
-	if err := r.unmarshal(v, par); err != nil {
+	if err := r.unmarshal(v); err != nil {
 		dst = dst[:len(dst)-1]
 		logger.Errorf("skipping json line %q because of error: %s", s, err)
 		invalidLines.Inc()
