@@ -902,6 +902,25 @@ max(vmalert_alerting_rules_last_evaluation_series_fetched) by(group, alertname) 
 See more details [here](https://github.com/VictoriaMetrics/VictoriaMetrics/issues/4039).
 This feature is available only if vmalert is using VictoriaMetrics v1.90 or higher as a datasource.
 
+### Series with the same labelset
+
+vmalert can produce the following error message:
+```
+result contains metrics with the same labelset during evaluation
+```
+
+The error means there is a collision between [time series](https://docs.victoriametrics.com/keyConcepts.html#time-series)
+during evaluation.
+
+For example, a rule with `expr: {__name__=~"vmalert_alerts_.*"} > 0` returns two distinct time series in response:
+```
+{__name__="vmalert_alerts_pending",job="vmalert",alertname="HostContextSwitching"} 12
+{__name__="vmalert_alerts_firing",job="vmalert",alertname="HostContextSwitching"} 0
+```
+
+As label `__name__` will be dropped during evaluation, leads to duplicated time series.
+To fix this, one could use function like [label_replace](https://docs.victoriametrics.com/metricsql/#label_replace) to preserve the distinct labelset.
+
 ## mTLS protection
 
 By default `vmalert` accepts http requests at `8880` port (this port can be changed via `-httpListenAddr` command-line flags),
@@ -1023,7 +1042,7 @@ The shortlist of configuration flags is the following:
   -datasource.tlsServerName string
      Optional TLS server name to use for connections to -datasource.url. By default, the server name from -datasource.url is used
   -datasource.url string
-     Datasource compatible with Prometheus HTTP API. It can be single node VictoriaMetrics or vmselect URL. Required parameter. E.g. http://127.0.0.1:8428 . See also -remoteRead.disablePathAppend and -datasource.showURL
+     Datasource compatible with Prometheus HTTP API. It can be single node VictoriaMetrics or vmselect URL. Required parameter. Supports address in the form of IP address with a port (e.g., 127.0.0.1:8428) or DNS SRV record. See also -remoteRead.disablePathAppend and -datasource.showURL
   -defaultTenant.graphite string
      Default tenant for Graphite alerting groups. See https://docs.victoriametrics.com/vmalert/#multitenancy .This flag is available only in Enterprise binaries. See https://docs.victoriametrics.com/enterprise/
   -defaultTenant.prometheus string
@@ -1287,7 +1306,7 @@ The shortlist of configuration flags is the following:
   -remoteRead.tlsServerName string
      Optional TLS server name to use for connections to -remoteRead.url. By default, the server name from -remoteRead.url is used
   -remoteRead.url vmalert
-     Optional URL to datasource compatible with Prometheus HTTP API. It can be single node VictoriaMetrics or vmselect.Remote read is used to restore alerts state.This configuration makes sense only if vmalert was configured with `remoteWrite.url` before and has been successfully persisted its state. E.g. http://127.0.0.1:8428. See also '-remoteRead.disablePathAppend', '-remoteRead.showURL'.
+     Optional URL to datasource compatible with Prometheus HTTP API. It can be single node VictoriaMetrics or vmselect.Remote read is used to restore alerts state.This configuration makes sense only if vmalert was configured with `remoteWrite.url` before and has been successfully persisted its state. Supports address in the form of IP address with a port (e.g., 127.0.0.1:8428) or DNS SRV record. See also '-remoteRead.disablePathAppend', '-remoteRead.showURL'.
   -remoteWrite.basicAuth.password string
      Optional basic auth password for -remoteWrite.url
   -remoteWrite.basicAuth.passwordFile string
@@ -1341,7 +1360,7 @@ The shortlist of configuration flags is the following:
   -remoteWrite.tlsServerName string
      Optional TLS server name to use for connections to -remoteWrite.url. By default, the server name from -remoteWrite.url is used
   -remoteWrite.url string
-     Optional URL to VictoriaMetrics or vminsert where to persist alerts state and recording rules results in form of timeseries. For example, if -remoteWrite.url=http://127.0.0.1:8428 is specified, then the alerts state will be written to http://127.0.0.1:8428/api/v1/write . See also -remoteWrite.disablePathAppend, '-remoteWrite.showURL'.
+     Optional URL to VictoriaMetrics or vminsert where to persist alerts state and recording rules results in form of timeseries. Supports address in the form of IP address with a port (e.g., 127.0.0.1:8428) or DNS SRV record. For example, if -remoteWrite.url=http://127.0.0.1:8428 is specified, then the alerts state will be written to http://127.0.0.1:8428/api/v1/write . See also -remoteWrite.disablePathAppend, '-remoteWrite.showURL'.
   -replay.disableProgressBar
      Whether to disable rendering progress bars during the replay. Progress bar rendering might be verbose or break the logs parsing, so it is recommended to be disabled when not used in interactive mode.
   -replay.maxDatapointsPerQuery /query_range

@@ -86,6 +86,7 @@ VictoriaMetrics has the following prominent features:
   * [Prometheus exposition format](#how-to-import-data-in-prometheus-exposition-format).
   * [InfluxDB line protocol](#how-to-send-data-from-influxdb-compatible-agents-such-as-telegraf) over HTTP, TCP and UDP.
   * [Graphite plaintext protocol](#how-to-send-data-from-graphite-compatible-agents-such-as-statsd) with [tags](https://graphite.readthedocs.io/en/latest/tags.html#carbon).
+  * [Statsd plaintext protocol](#how-to-send-data-from-statsd-compatible-clients)
   * [OpenTSDB put message](#sending-data-via-telnet-put-protocol).
   * [HTTP OpenTSDB /api/put requests](#sending-opentsdb-data-via-http-apiput-requests).
   * [JSON line format](#how-to-import-data-in-json-line-format).
@@ -121,7 +122,7 @@ VictoriaMetrics ecosystem contains the following components additionally to [sin
 - [vmbackup](https://docs.victoriametrics.com/vmbackup/), [vmrestore](https://docs.victoriametrics.com/vmrestore/) and [vmbackupmanager](https://docs.victoriametrics.com/vmbackupmanager/) -
   tools for creating backups and restoring from backups for VictoriaMetrics data.
 - `vminsert`, `vmselect` and `vmstorage` - components of [VictoriaMetrics cluster](https://docs.victoriametrics.com/cluster-victoriametrics/).
-- [VictoriaLogs](https://docs.victoriametrics.com/VictoriaLogs/) - user-friendly cost-efficient database for logs.
+- [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/) - user-friendly cost-efficient database for logs.
 
 ## Operation
 
@@ -700,6 +701,79 @@ The `/api/v1/export` endpoint should return the following response:
 {"metric":{"__name__":"measurement_field1","tag1":"value1","tag2":"value2"},"values":[123],"timestamps":[1695902762311]}
 {"metric":{"__name__":"measurement_field2","tag1":"value1","tag2":"value2"},"values":[1.23],"timestamps":[1695902762311]}
 ```
+
+## How to send data from StatsD-compatible clients
+
+VictoriaMetrics supports extended StatsD protocol. Currently, it supports `tags` and `value packing` 
+extensions provided by [dogstatsd](https://docs.datadoghq.com/developers/dogstatsd/datagram_shell). 
+During parsing, metric's `<TYPE>` is added as a special label `__statsd_metric_type__`. 
+
+It is strongly advisable to configure streaming aggregation for each metric type. This process serves two primary 
+objectives: 
+* transformation of the StatsD data model into the VictoriaMetrics data model. VictoriaMetrics requires a consistent 
+interval between data points. 
+* minimizing of the disk space utilization and overall resource consumption during data ingestion.
+
+VictoriaMetrics supports the following metric [types](https://docs.datadoghq.com/metrics/types):
+
+* `c` Counter type.
+* `g`  Gauge type.
+* `ms` Timer type.
+* `m` Meters type.
+* `h` Histogram type.
+* `s` Set type with only numeric values.
+* `d` Distribution type.
+
+_The `Not Assigned` type is not supported due to the ambiguity surrounding its aggregation method. 
+The correct aggregation method cannot be determined for the undefined metric._
+
+Enable Statsd receiver in VictoriaMetrics by setting `-statsdListenAddr` command line flag and configure [stream aggregation](https://docs.victoriametrics.com/stream-aggregation/). 
+For instance, the following command will enable StatsD receiver in VictoriaMetrics on TCP and UDP port `8125`:
+
+```console
+/path/to/victoria-metrics-prod -statsdListenAddr=:8125 -streamAggr.config=statsd_aggr.yaml
+```
+
+Example of stream aggregation config:
+
+```yaml
+# statsd_aggr.yaml
+# `last` output will keep the last sample on `interval`
+# for each series that match `{__statsd_metric_type__="g"}` selector
+- match: '{__statsd_metric_type__="g"}'
+  outputs: [last]
+  interval: 1m
+```
+
+Example for writing data with StatsD plaintext protocol to local VictoriaMetrics using `nc`:
+
+```console
+echo "foo.bar:123|g|#tag1:baz" | nc -N localhost 8125
+```
+
+_An arbitrary number of lines delimited by `\n` (aka newline char) can be sent in one go._
+
+Explicit setting of timestamps is not supported for StatsD protocol. Timestamp is set to the current time when 
+VictoriaMetrics or vmagent receives it.
+
+Once ingested, the data can be read via [/api/v1/export](#how-to-export-data-in-json-line-format) endpoint:
+
+```console
+curl -G 'http://localhost:8428/api/v1/export' -d 'match={__name__=~"foo.*"}'
+```
+
+_Please note, with stream aggregation enabled data will become available only after specified aggregation interval._
+
+The `/api/v1/export` endpoint should return the following response:
+
+```json
+{"metric":{"__name__":"foo.bar:1m_last","__statsd_metric_type__":"g","tag1":"baz"},"values":[123],"timestamps":[1715843939000]}
+```
+
+Some examples of compatible statsd clients:
+- [statsd-instrument](https://github.com/Shopify/statsd-instrument)
+- [dogstatsd-ruby](https://github.com/DataDog/dogstatsd-ruby)
+- [go-statsd-client](https://github.com/cactus/go-statsd-client)
 
 ## How to send data from Graphite-compatible agents such as [StatsD](https://github.com/etsy/statsd)
 
@@ -1356,6 +1430,7 @@ Additionally, VictoriaMetrics can accept metrics via the following popular data 
 * DataDog `submit metrics` API. See [these docs](#how-to-send-data-from-datadog-agent) for details.
 * InfluxDB line protocol. See [these docs](#how-to-send-data-from-influxdb-compatible-agents-such-as-telegraf) for details.
 * Graphite plaintext protocol. See [these docs](#how-to-send-data-from-graphite-compatible-agents-such-as-statsd) for details.
+* Statsd plaintext protocol. See [these docs](#how-to-send-data-from-statsd-compatible-clients) for details.
 * OpenTelemetry http API. See [these docs](#sending-data-via-opentelemetry) for details.
 * OpenTSDB telnet put protocol. See [these docs](#sending-data-via-telnet-put-protocol) for details.
 * OpenTSDB http `/api/put` protocol. See [these docs](#sending-opentsdb-data-via-http-apiput-requests) for details.
@@ -2082,7 +2157,7 @@ General security recommendations:
 
 - All the VictoriaMetrics components must run in protected private networks without direct access from untrusted networks such as Internet.
   The exception is [vmauth](https://docs.victoriametrics.com/vmauth/) and [vmgateway](https://docs.victoriametrics.com/vmgateway/),
-  which are indended for serving public requests and performing authorization with [TLS termination](https://en.wikipedia.org/wiki/TLS_termination_proxy).
+  which are intended for serving public requests and performing authorization with [TLS termination](https://en.wikipedia.org/wiki/TLS_termination_proxy).
 - All the requests from untrusted networks to VictoriaMetrics components must go through auth proxy such as [vmauth](https://docs.victoriametrics.com/vmauth/)
   or [vmgateway](https://docs.victoriametrics.com/vmgateway/). The proxy must be set up with proper authentication and authorization.
 - Prefer using lists of allowed API endpoints, while disallowing access to other endpoints when configuring [vmauth](https://docs.victoriametrics.com/vmauth/)
@@ -2124,13 +2199,16 @@ All the VictoriaMetrics [Enterprise](https://docs.victoriametrics.com/enterprise
 via [Let's Encrypt service](https://letsencrypt.org/). The following command-line flags must be set in order to enable automatic issuing of TLS certificates:
 
 - `-httpListenAddr` must be set for listening TCP port `443`. For example, `-httpListenAddr=:443`. This port must be accessible by the [Let's Encrypt service](https://letsencrypt.org/).
-- `-tls` must be set in order to accept HTTPS requests at `-httpListenAddr`.
+- `-tls` must be set in order to accept HTTPS requests at `-httpListenAddr`. Note that `-tlcCertFile` and `-tlsKeyFile` aren't needed when automatic TLS certificate issuing is enabled.
 - `-tlsAutocertHosts` must be set to comma-separated list of hosts, which can be reached via `-httpListenAddr`. TLS certificates are automatically issued for these hosts.
 - `-tlsAutocertEmail` must be set to contact email for the issued TLS certificates.
 - `-tlsAutocertCacheDir` may be set to the directory path for persisting the issued TLS certificates between VictoriaMetrics restarts. If this flag isn't set,
   then TLS certificates are re-issued on every restart.
 
 This functionality can be evaluated for free according to [these docs](https://docs.victoriametrics.com/enterprise/).
+
+See also [security recommendations](#security).
+
 
 ## Tuning
 
@@ -2834,7 +2912,7 @@ Pass `-help` to VictoriaMetrics in order to see the list of supported command-li
      The maximum size in bytes of a single Prometheus remote_write API request
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 33554432)
   -maxLabelValueLen int
-     The maximum length of label values in the accepted time series. Longer label values are truncated. In this case the vm_too_long_label_values_total metric at /metrics page is incremented (default 16384)
+     The maximum length of label values in the accepted time series. Longer label values are truncated. In this case the vm_too_long_label_values_total metric at /metrics page is incremented (default 1024)
   -maxLabelsPerTimeseries int
      The maximum number of labels accepted per time series. Superfluous labels are dropped. In this case the vm_metrics_with_dropped_labels_total metric at /metrics page is incremented (default 30)
   -memory.allowedBytes size
@@ -3128,6 +3206,12 @@ Pass `-help` to VictoriaMetrics in order to see the list of supported command-li
      The following optional suffixes are supported: s (second), m (minute), h (hour), d (day), w (week), y (year). If suffix isn't set, then the duration is counted in months (default 0)
   -sortLabels
      Whether to sort labels for incoming samples before writing them to storage. This may be needed for reducing memory usage at storage when the order of labels in incoming samples is random. For example, if m{k1="v1",k2="v2"} may be sent as m{k2="v2",k1="v1"}. Enabled sorting for labels can slow down ingestion performance a bit
+  -statsd.disableAggregationEnforcement
+    	Whether to disable streaming aggregation requirement check. It's recommended to run statsdServer with pre-configured streaming aggregation to decrease load at database.
+  -statsdListenAddr string
+    	TCP and UDP address to listen for Statsd plaintext data. Usually :8125 must be set. Doesn't work if empty. See also -statsdListenAddr.useProxyProtocol
+  -statsdListenAddr.useProxyProtocol
+    	Whether to use proxy protocol for connections accepted at -statsdListenAddr . See https://www.haproxy.org/download/1.8/doc/proxy-protocol.txt
   -storage.cacheSizeIndexDBDataBlocks size
      Overrides max size for indexdb/dataBlocks cache. See https://docs.victoriametrics.com/single-server-victoriametrics/#cache-tuning
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 0)
