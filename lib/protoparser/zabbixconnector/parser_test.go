@@ -28,7 +28,7 @@ func TestRowsUnmarshalFailure(t *testing.T) {
 		}
 	}
 
-	par := []string{"test", "-zabbixconnector.addGroups", "1", "-zabbixconnector.addEmptyTags", "1"}
+	par := []string{"test", "-zabbixconnector.addGroups", "1", "-zabbixconnector.addEmptyTags", "1", "-zabbixconnector.mergeDuplicateTags", ""}
 	// Invalid json line
 	f("", par)
 	f("\n", par)
@@ -118,7 +118,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 	}
 
 	// Add groups and empty tags
-	par := []string{"test", "-zabbixconnector.addGroups", "1", "-zabbixconnector.addEmptyTags", "1"}
+	par := []string{"test", "-zabbixconnector.addGroups", "1", "-zabbixconnector.addEmptyTags", "1", "-zabbixconnector.mergeDuplicateTags", ""}
 	// Empty line
 	f("", par, &Rows{})
 	f("\n\n", par, &Rows{})
@@ -143,15 +143,15 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 							Value: []byte("in1"),
 						},
 						{
-							Key:   []byte("g1"),
+							Key:   []byte("group_g1"),
 							Value: []byte("1"),
 						},
 						{
-							Key:   []byte("tn1"),
+							Key:   []byte("tag_tn1"),
 							Value: []byte("tv1"),
 						},
 						{
-							Key:   []byte("tn2"),
+							Key:   []byte("tag_tn2"),
 							Value: []byte("1"),
 						},
 					},
@@ -180,15 +180,15 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 							Value: []byte("in1"),
 						},
 						{
-							Key:   []byte("g1"),
+							Key:   []byte("group_g1"),
 							Value: []byte("1"),
 						},
 						{
-							Key:   []byte("tn1"),
+							Key:   []byte("tag_tn1"),
 							Value: []byte("1"),
 						},
 						{
-							Key:   []byte("tn2"),
+							Key:   []byte("tag_tn2"),
 							Value: []byte("1"),
 						},
 					},
@@ -244,15 +244,15 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 							Value: []byte("in1"),
 						},
 						{
-							Key:   []byte("g1"),
+							Key:   []byte("group_g1"),
 							Value: []byte("1"),
 						},
 						{
-							Key:   []byte("tn1"),
+							Key:   []byte("tag_tn1"),
 							Value: []byte("tv1"),
 						},
 						{
-							Key:   []byte("tn2"),
+							Key:   []byte("tag_tn2"),
 							Value: []byte("1"),
 						},
 					},
@@ -274,11 +274,11 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 							Value: []byte("in2"),
 						},
 						{
-							Key:   []byte("g2"),
+							Key:   []byte("group_g2"),
 							Value: []byte("1"),
 						},
 						{
-							Key:   []byte("tn1"),
+							Key:   []byte("tag_tn1"),
 							Value: []byte("tv1"),
 						},
 					},
@@ -310,15 +310,15 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 							Value: []byte("in1"),
 						},
 						{
-							Key:   []byte("g1"),
+							Key:   []byte("group_g1"),
 							Value: []byte("1"),
 						},
 						{
-							Key:   []byte("tn1"),
+							Key:   []byte("tag_tn1"),
 							Value: []byte("tv1"),
 						},
 						{
-							Key:   []byte("tn2"),
+							Key:   []byte("tag_tn2"),
 							Value: []byte("1"),
 						},
 					},
@@ -340,11 +340,11 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 							Value: []byte("in2"),
 						},
 						{
-							Key:   []byte("g2"),
+							Key:   []byte("group_g2"),
 							Value: []byte("1"),
 						},
 						{
-							Key:   []byte("tn1"),
+							Key:   []byte("tag_tn1"),
 							Value: []byte("tv1"),
 						},
 					},
@@ -374,15 +374,15 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 							Value: []byte("in1"),
 						},
 						{
-							Key:   []byte("g1"),
+							Key:   []byte("group_g1"),
 							Value: []byte("1"),
 						},
 						{
-							Key:   []byte("tn1"),
+							Key:   []byte("tag_tn1"),
 							Value: []byte("tv1"),
 						},
 						{
-							Key:   []byte("tn2"),
+							Key:   []byte("tag_tn2"),
 							Value: []byte("1"),
 						},
 					},
@@ -404,11 +404,11 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 							Value: []byte("in2"),
 						},
 						{
-							Key:   []byte("g2"),
+							Key:   []byte("group_g2"),
 							Value: []byte("1"),
 						},
 						{
-							Key:   []byte("tn1"),
+							Key:   []byte("tag_tn1"),
 							Value: []byte("tv1"),
 						},
 					},
@@ -419,7 +419,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 		})
 
 	// Add empty tags and skip groups
-	par = []string{"test", "-zabbixconnector.addGroups", "", "-zabbixconnector.addEmptyTags", "1"}
+	par = []string{"test", "-zabbixconnector.addGroups", "", "-zabbixconnector.addEmptyTags", "1", "-zabbixconnector.mergeDuplicateTags", ""}
 	// Multiple lines with invalid lines in the middle.
 	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}
 	failed line
@@ -442,11 +442,11 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 							Value: []byte("in1"),
 						},
 						{
-							Key:   []byte("tn1"),
+							Key:   []byte("tag_tn1"),
 							Value: []byte("tv1"),
 						},
 						{
-							Key:   []byte("tn2"),
+							Key:   []byte("tag_tn2"),
 							Value: []byte("1"),
 						},
 					},
@@ -468,7 +468,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 							Value: []byte("in2"),
 						},
 						{
-							Key:   []byte("tn1"),
+							Key:   []byte("tag_tn1"),
 							Value: []byte("tv1"),
 						},
 					},
@@ -479,7 +479,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 		})
 
 	// Add groups and skip empty tags
-	par = []string{"test", "-zabbixconnector.addGroups", "1", "-zabbixconnector.addEmptyTags", ""}
+	par = []string{"test", "-zabbixconnector.addGroups", "1", "-zabbixconnector.addEmptyTags", "", "-zabbixconnector.mergeDuplicateTags", ""}
 
 	// Multiple lines with invalid lines in the middle.
 	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}
@@ -503,11 +503,11 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 							Value: []byte("in1"),
 						},
 						{
-							Key:   []byte("g1"),
+							Key:   []byte("group_g1"),
 							Value: []byte("1"),
 						},
 						{
-							Key:   []byte("tn1"),
+							Key:   []byte("tag_tn1"),
 							Value: []byte("tv1"),
 						},
 					},
@@ -529,11 +529,11 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 							Value: []byte("in2"),
 						},
 						{
-							Key:   []byte("g2"),
+							Key:   []byte("group_g2"),
 							Value: []byte("1"),
 						},
 						{
-							Key:   []byte("tn1"),
+							Key:   []byte("tag_tn1"),
 							Value: []byte("tv1"),
 						},
 					},
@@ -544,7 +544,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 		})
 
 	// skip groups and empty tags
-	par = []string{"test", "-zabbixconnector.addGroups", "", "-zabbixconnector.addEmptyTags", ""}
+	par = []string{"test", "-zabbixconnector.addGroups", "", "-zabbixconnector.addEmptyTags", "", "-zabbixconnector.mergeDuplicateTags", ""}
 
 	// Multiple lines with invalid lines in the middle.
 	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}
@@ -568,7 +568,7 @@ failed line
 							Value: []byte("in1"),
 						},
 						{
-							Key:   []byte("tn1"),
+							Key:   []byte("tag_tn1"),
 							Value: []byte("tv1"),
 						},
 					},
@@ -590,11 +590,50 @@ failed line
 							Value: []byte("in2"),
 						},
 						{
-							Key:   []byte("tn1"),
+							Key:   []byte("tag_tn1"),
 							Value: []byte("tv1"),
 						},
 					},
 					Value:     1.5,
+					Timestamp: 1712417868425,
+				},
+			},
+		})
+
+	// Merge tags
+	par = []string{"test", "-zabbixconnector.addGroups", "1", "-zabbixconnector.addEmptyTags", "1", "-zabbixconnector.mergeDuplicateTags", "__"}
+	// Single line with groups, empty tags and duplicate tags
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""},{"tag":"tn2","value":"tv2"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par,
+		&Rows{
+			Rows: []Row{
+				{
+					Tags: []Tag{
+						{
+							Key:   []byte("host"),
+							Value: []byte("h1"),
+						},
+						{
+							Key:   []byte("hostname"),
+							Value: []byte("n1"),
+						},
+						{
+							Key:   []byte("__name__"),
+							Value: []byte("in1"),
+						},
+						{
+							Key:   []byte("group_g1"),
+							Value: []byte("1"),
+						},
+						{
+							Key:   []byte("tag_tn1"),
+							Value: []byte("tv1"),
+						},
+						{
+							Key:   []byte("tag_tn2"),
+							Value: []byte("1__tv2"),
+						},
+					},
+					Value:     1,
 					Timestamp: 1712417868425,
 				},
 			},
@@ -615,9 +654,10 @@ func compareRows(rows, rowsExpected *Rows) error {
 }
 
 func compareSingleRow(row, rowExpected *Row) error {
-	if !reflect.DeepEqual(row.Tags, rowExpected.Tags) {
+	if !equalTags(row.Tags, rowExpected.Tags) {
 		return fmt.Errorf("unexpected tags; got %q; want %q", row.Tags, rowExpected.Tags)
 	}
+
 	if row.Value != rowExpected.Value {
 		return fmt.Errorf("unexpected values; got %v; want %v", row.Value, rowExpected.Value)
 	}
@@ -625,4 +665,28 @@ func compareSingleRow(row, rowExpected *Row) error {
 		return fmt.Errorf("unexpected values; got %v; want %v", row.Timestamp, rowExpected.Timestamp)
 	}
 	return nil
+}
+
+func equalTags(tags, tagsExpected []Tag) bool {
+	if len(tags) != len(tagsExpected) {
+		return false
+	}
+
+	for _, v := range tags {
+		if !searchTags(v, tagsExpected) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func searchTags(t Tag, tags []Tag) bool {
+	for _, v := range tags {
+		if reflect.DeepEqual(t, v) {
+			return true
+		}
+	}
+
+	return false
 }

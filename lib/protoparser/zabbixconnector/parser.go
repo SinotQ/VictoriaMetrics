@@ -5,14 +5,16 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/logger"
 	"github.com/VictoriaMetrics/metrics"
 	"github.com/valyala/fastjson"
 )
 
 var (
-	addGroups    = flag.String("zabbixconnector.addGroups", "", "Enable adding Zabbix host groups to labels and set value for these labels.")
-	addEmptyTags = flag.String("zabbixconnector.addEmptyTags", "", "Enable adding Zabbix tags without values to labels and set value for these labels.")
+	addGroups          = flag.String("zabbixconnector.addGroups", "", "Enable adding Zabbix host groups to labels and set value for these labels.")
+	addEmptyTags       = flag.String("zabbixconnector.addEmptyTags", "", "Enable adding Zabbix tags without values to labels and set value for these labels.")
+	mergeDuplicateTags = flag.String("zabbixconnector.mergeDuplicateTags", "", "Enable merging of duplicate Zabbix tag values and set a separator for the values of these labels.")
 )
 
 // Rows represents Zabbix Connector lines.
@@ -128,31 +130,73 @@ func (r *Row) unmarshal(o *fastjson.Value) error {
 			}
 
 			tag = r.addTag()
-			tag.Key = append(tag.Key[:0], k...)
+			tag.Key = append(tag.Key[:0], []byte("group_")...)
+			tag.Key = append(tag.Key, k...)
 			tag.Value = append(tag.Value[:0], addGroups...)
 		}
 	}
 
 	addEmptyTags := []byte(*addEmptyTags)
+	mergeDuplicateTags := []byte(*mergeDuplicateTags)
+
 	itemTags, err := getArray(o, "item_tags")
 	if err != nil {
 		return fmt.Errorf("missing `item_tags` element, %s", err)
 	}
-	for _, t := range itemTags {
-		k := t.GetStringBytes("tag")
-		if len(k) == 0 {
-			continue
+
+	if len(mergeDuplicateTags) == 0 { // Do not merge tags
+		for _, t := range itemTags {
+			k := t.GetStringBytes("tag")
+			if len(k) == 0 {
+				continue
+			}
+
+			v := t.GetStringBytes("value")
+			if len(v) == 0 && len(addEmptyTags) == 0 {
+				continue
+			}
+			tag = r.addTag()
+			tag.Key = append(tag.Key[:0], []byte("tag_")...)
+			tag.Key = append(tag.Key, k...)
+			if len(v) == 0 {
+				tag.Value = append(tag.Value[:0], addEmptyTags...)
+			} else {
+				tag.Value = append(tag.Value[:0], v...)
+			}
+		}
+	} else { // Merge Tags
+		mapTags := make(map[string][]byte)
+		for _, t := range itemTags {
+			k := t.GetStringBytes("tag")
+			if len(k) == 0 {
+				continue
+			}
+
+			v := t.GetStringBytes("value")
+			if len(v) == 0 && len(addEmptyTags) == 0 {
+				continue
+			}
+			sk := bytesutil.ToUnsafeString(k)
+			if _, ok := mapTags[sk]; !ok {
+				if len(v) == 0 {
+					mapTags[sk] = addEmptyTags
+				} else {
+					mapTags[sk] = v
+				}
+			} else {
+				mapTags[sk] = append(mapTags[sk], mergeDuplicateTags...)
+				if len(v) == 0 {
+					mapTags[sk] = append(mapTags[sk], addEmptyTags...)
+				} else {
+					mapTags[sk] = append(mapTags[sk], v...)
+				}
+			}
 		}
 
-		v := t.GetStringBytes("value")
-		if len(v) == 0 && len(addEmptyTags) == 0 {
-			continue
-		}
-		tag = r.addTag()
-		tag.Key = append(tag.Key[:0], k...)
-		if len(v) == 0 {
-			tag.Value = append(tag.Value[:0], addEmptyTags...)
-		} else {
+		for k, v := range mapTags {
+			tag = r.addTag()
+			tag.Key = append(tag.Key[:0], []byte("tag_")...)
+			tag.Key = append(tag.Key, []byte(k)...)
 			tag.Value = append(tag.Value[:0], v...)
 		}
 	}
