@@ -117,7 +117,7 @@ VictoriaMetrics ecosystem contains the following components additionally to [sin
 - [vmalert](https://docs.victoriametrics.com/vmalert/) - a service for processing Prometheus-compatible alerting and recording rules.
 - [vmalert-tool](https://docs.victoriametrics.com/vmalert-tool/) -  a tool for validating alerting and recording rules.
 - [vmauth](https://docs.victoriametrics.com/vmauth/) - authorization proxy and load balancer optimized for VictoriaMetrics products.
-- [vmgateway](https://docs.victoriametrics.com/vmgateway/) - authorization proxy with per-[tenant](https://docs.victoriametrics.com/cluster-victoriametrics/#multitenancy) rate limiting cababilities.
+- [vmgateway](https://docs.victoriametrics.com/vmgateway/) - authorization proxy with per-[tenant](https://docs.victoriametrics.com/cluster-victoriametrics/#multitenancy) rate limiting capabilities.
 - [vmctl](https://docs.victoriametrics.com/vmctl/) - a tool for migrating and copying data between different storage systems for metrics.
 - [vmbackup](https://docs.victoriametrics.com/vmbackup/), [vmrestore](https://docs.victoriametrics.com/vmrestore/) and [vmbackupmanager](https://docs.victoriametrics.com/vmbackupmanager/) -
   tools for creating backups and restoring from backups for VictoriaMetrics data.
@@ -1188,13 +1188,13 @@ ROOT_IMAGE=scratch make package-victoria-metrics
 
 VictoriaMetrics can be built with Podman in either rootful or rootless mode.
 
-When building via rootlful Podman, simply add `DOCKER=podman` to the relevant `make` commandline.  To build
+When building via rootful Podman, simply add `DOCKER=podman` to the relevant `make` commandline.  To build
 via rootless Podman, add `DOCKER=podman DOCKER_RUN="podman run --userns=keep-id"` to the `make`
 commandline.
 
 For example: `make victoria-metrics-pure DOCKER=podman DOCKER_RUN="podman run --userns=keep-id"`
 
-Note that `production` builds are not supported via Podman becuase Podman does not support `buildx`.
+Note that `production` builds are not supported via Podman because Podman does not support `buildx`.
 
 ## Start with docker-compose
 
@@ -1624,6 +1624,25 @@ Set HTTP request header `Content-Encoding: gzip` when sending gzip-compressed da
 VictoriaMetrics stores the ingested OpenTelemetry [raw samples](https://docs.victoriametrics.com/keyconcepts/#raw-samples) as is without any transformations.
 Pass `-opentelemetry.usePrometheusNaming` command-line flag to VictoriaMetrics for automatic conversion of metric names and labels into Prometheus-compatible format.
 
+Using the following exporter configuration in the opentelemetry collector will allow you to send metrics into VictoriaMetrics:
+
+```yaml
+exporters:
+  otlphttp/victoriametrics:
+    compression: gzip
+    encoding: proto
+    endpoint: http://<collector/vmagent>.<namespace>.svc.cluster.local:<port>/opentelemetry
+```
+Remember to add the exporter to the desired service pipeline in order to activate the exporter.
+```yaml
+service:
+  pipelines:
+    metrics:
+      exporters:
+        - otlphttp/victoriametrics
+      receivers:
+        - otlp
+```
 See [How to use OpenTelemetry metrics with VictoriaMetrics](https://docs.victoriametrics.com/guides/getting-started-with-opentelemetry/).
 
 ## JSON line format
@@ -2404,7 +2423,7 @@ and [cardinality explorer docs](#cardinality-explorer).
 
 * If you run VictoriaMetrics on a host with 16 or more CPU cores, then it may be needed to tune the `-search.maxWorkersPerQuery` command-line flag
   in order to improve query performance. If VictoriaMetrics serves big number of concurrent `select` queries, then try reducing the value for this flag.
-  If VcitoriaMetrics serves heavy queries, which select `>10K` of [time series](https://docs.victoriametrics.com/keyconcepts/#time-series) and/or process `>100M`
+  If VictoriaMetrics serves heavy queries, which select `>10K` of [time series](https://docs.victoriametrics.com/keyconcepts/#time-series) and/or process `>100M`
   of [raw samples](https://docs.victoriametrics.com/keyconcepts/#raw-samples) per query, then try setting the value for this flag to the number of available CPU cores.
 
 * VictoriaMetrics buffers incoming data in memory for up to a few seconds before flushing it to persistent storage.
@@ -2430,7 +2449,8 @@ and [cardinality explorer docs](#cardinality-explorer).
 * If VictoriaMetrics doesn't work because of certain parts are corrupted due to disk errors,
   then just remove directories with broken parts. It is safe removing subdirectories under `<-storageDataPath>/data/{big,small}/YYYY_MM` directories
   when VictoriaMetrics isn't running. This recovers VictoriaMetrics at the cost of data loss stored in the deleted broken parts.
-  In the future, `vmrecover` tool will be created for automatic recovering from such errors.
+  The names of broken parts should be present in the error message. If you see that error message is truncated and doesn't contain all the information
+  try increasing `-loggerMaxArgLen` cmd-line flag to higher values to avoid error messages truncation.
 
 * If you see gaps on the graphs, try resetting the cache by sending request to `/internal/resetRollupResultCache`.
   If this removes gaps on the graphs, then it is likely data with timestamps older than `-search.cacheTimestampOffset`
@@ -2450,7 +2470,7 @@ and [cardinality explorer docs](#cardinality-explorer).
 * New time series can be logged if `-logNewSeries` command-line flag is passed to VictoriaMetrics.
 
 * VictoriaMetrics limits the number of labels per each metric with `-maxLabelsPerTimeseries` command-line flag
-  and drops superflouos labels. This prevents from ingesting metrics with too many labels.
+  and drops superfluous labels. This prevents from ingesting metrics with too many labels.
   It is recommended [monitoring](#monitoring) `vm_metrics_with_dropped_labels_total`
   metric in order to determine whether `-maxLabelsPerTimeseries` must be adjusted for your workload.
 
@@ -2512,7 +2532,7 @@ It is also possible removing [rollup result cache](#rollup-result-cache) on star
 
 ## Rollup result cache
 
-VictoriaMetrics caches query responses by default. This allows increasing performance for repated queries
+VictoriaMetrics caches query responses by default. This allows increasing performance for repeated queries
 to [`/api/v1/query`](https://docs.victoriametrics.com/keyconcepts/#instant-query) and [`/api/v1/query_range`](https://docs.victoriametrics.com/keyconcepts/#range-query)
 with the increasing `time`, `start` and `end` query args.
 
@@ -2706,7 +2726,33 @@ If you like VictoriaMetrics and want to contribute, then please [read these docs
 
 Report bugs and propose new features [here](https://github.com/VictoriaMetrics/VictoriaMetrics/issues).
 
-## Images in documentation
+## Documentation
+
+VictoriaMetrics documentation is available at [https://docs.victoriametrics.com/](https://docs.victoriametrics.com/).
+It is built from `*.md` files located in [docs](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs) folder
+and gets automatically updated once changes are merged to [master](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master) branch.
+To update the documentation follow the steps below:
+- [Fork](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/about-forks) 
+VictoriaMetrics repo and apply changes to the docs:
+  - To update [the main page](https://docs.victoriametrics.com/) modify [this file](https://github.com/VictoriaMetrics/VictoriaMetrics/blob/master/README.md).
+  - To update other pages, apply changes to the corresponding file in [docs folder](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/docs).
+- If your changes contain an image then see [images in documentation](https://docs.victoriametrics.com/#images-in-documentation).
+- Once changes are made, execute the command below to finalize and sync the changes:
+```sh
+make docs-sync
+```
+- Create [a pull request](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request)
+with proposed changes and wait for it to be merged.
+
+Requirements for changes to docs:
+- Keep backward compatibility of existing links. Avoid changing anchors or deleting pages as they could have been
+used or posted in other docs, GitHub issues, stackoverlow answers, etc. 
+- Keep docs simple. Try using as simple wording as possible.
+- Keep docs consistent. When modifying existing docs, verify that other places referencing to this doc are still relevant.
+- Prefer improving the existing docs instead of adding new ones.
+- Use absolute links.
+
+### Images in documentation
 
 Please, keep image size and number of images per single page low. Keep the docs page as lightweight as possible.
 
@@ -2762,7 +2808,7 @@ Pass `-help` to VictoriaMetrics in order to see the list of supported command-li
   -cacheExpireDuration duration
      Items are removed from in-memory caches after they aren't accessed for this duration. Lower values may reduce memory usage at the cost of higher CPU usage. See also -prevCacheRemovalPercent (default 30m0s)
   -configAuthKey value
-     Authorization key for accessing /config page. It must be passed via authKey query arg
+     Authorization key for accessing /config page. It must be passed via authKey query arg. It overrides httpAuth.* settings.
      Flag value can be read from the given file when using -configAuthKey=file:///abs/path/to/file or -configAuthKey=file://./relative/path/to/file . Flag value can be read from the given http/https url when using -configAuthKey=http://host/path or -configAuthKey=https://host/path
   -csvTrimTimestamp duration
      Trim timestamps when importing csv data to this duration. Minimum practical duration is 1ms. Higher duration (i.e. 1s) may be used for reducing disk space usage for timestamp data (default 1ms)
@@ -2881,9 +2927,9 @@ Pass `-help` to VictoriaMetrics in order to see the list of supported command-li
   -internStringMaxLen int
      The maximum length for strings to intern. A lower limit may save memory at the cost of higher CPU usage. See https://en.wikipedia.org/wiki/String_interning . See also -internStringDisableCache and -internStringCacheExpireDuration (default 500)
   -license string
-     Lisense key for VictoriaMetrics Enterprise. See https://victoriametrics.com/products/enterprise/ . Trial Enterprise license can be obtained from https://victoriametrics.com/products/enterprise/trial/ . This flag is available only in Enterprise binaries. The license key can be also passed via file specified by -licenseFile command-line flag
+     License key for VictoriaMetrics Enterprise. See https://victoriametrics.com/products/enterprise/ . Trial Enterprise license can be obtained from https://victoriametrics.com/products/enterprise/trial/ . This flag is available only in Enterprise binaries. The license key can be also passed via file specified by -licenseFile command-line flag
   -license.forceOffline
-     Whether to enable offline verification for VictoriaMetrics Enterprise license key, which has been passed either via -license or via -licenseFile command-line flag. The issued license key must support offline verification feature. Contact info@victoriametrics.com if you need offline license verification. This flag is avilable only in Enterprise binaries
+     Whether to enable offline verification for VictoriaMetrics Enterprise license key, which has been passed either via -license or via -licenseFile command-line flag. The issued license key must support offline verification feature. Contact info@victoriametrics.com if you need offline license verification. This flag is available only in Enterprise binaries
   -licenseFile string
      Path to file with license key for VictoriaMetrics Enterprise. See https://victoriametrics.com/products/enterprise/ . Trial Enterprise license can be obtained from https://victoriametrics.com/products/enterprise/trial/ . This flag is available only in Enterprise binaries. The license key can be also passed inline via -license command-line flag
   -logNewSeries
@@ -3027,7 +3073,7 @@ Pass `-help` to VictoriaMetrics in order to see the list of supported command-li
   -promscrape.kumaSDCheckInterval duration
      Interval for checking for changes in kuma service discovery. This works only if kuma_sd_configs is configured in '-promscrape.config' file. See https://docs.victoriametrics.com/sd_configs/#kuma_sd_configs for details (default 30s)
   -promscrape.maxDroppedTargets int
-     The maximum number of droppedTargets to show at /api/v1/targets page. Increase this value if your setup drops more scrape targets during relabeling and you need investigating labels for all the dropped targets. Note that the increased number of tracked dropped targets may result in increased memory usage (default 1000)
+     The maximum number of droppedTargets to show at /api/v1/targets page. Increase this value if your setup drops more scrape targets during relabeling and you need investigating labels for all the dropped targets. Note that the increased number of tracked dropped targets may result in increased memory usage (default 10000)
   -promscrape.maxResponseHeadersSize size
      The maximum size of http response headers from Prometheus scrape targets
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 4096)
@@ -3076,7 +3122,7 @@ Pass `-help` to VictoriaMetrics in order to see the list of supported command-li
   -relabelConfig string
      Optional path to a file with relabeling rules, which are applied to all the ingested metrics. The path can point either to local file or to http url. See https://docs.victoriametrics.com/#relabeling for details. The config is reloaded on SIGHUP signal
   -reloadAuthKey value
-     Auth key for /-/reload http endpoint. It must be passed as authKey=...
+     Auth key for /-/reload http endpoint. It must be passed via authKey query arg. It overrides httpAuth.* settings.
      Flag value can be read from the given file when using -reloadAuthKey=file:///abs/path/to/file or -reloadAuthKey=file://./relative/path/to/file . Flag value can be read from the given http/https url when using -reloadAuthKey=http://host/path or -reloadAuthKey=https://host/path
   -retentionFilter array
      Retention filter in the format 'filter:retention'. For example, '{env="dev"}:3d' configures the retention for time series with env="dev" label to 3 days. See https://docs.victoriametrics.com/#retention-filters for details. This flag is available only in VictoriaMetrics enterprise. See https://docs.victoriametrics.com/enterprise/
@@ -3093,14 +3139,18 @@ Pass `-help` to VictoriaMetrics in order to see the list of supported command-li
      Whether to disable automatic response cache reset if a sample with timestamp outside -search.cacheTimestampOffset is inserted into VictoriaMetrics
   -search.disableCache
      Whether to disable response caching. This may be useful when ingesting historical data. See https://docs.victoriametrics.com/#backfilling . See also -search.resetRollupResultCacheOnStartup
+  -search.disableImplicitConversion
+     Whether to return an error for queries that rely on implicit subquery conversions, see https://docs.victoriametrics.com/metricsql/#subqueries for details. See also -search.logImplicitConversion
   -search.graphiteMaxPointsPerSeries int
      The maximum number of points per series Graphite render API can return (default 1000000)
   -search.graphiteStorageStep duration
      The interval between datapoints stored in the database. It is used at Graphite Render API handler for normalizing the interval between datapoints in case it isn't normalized. It can be overridden by sending 'storage_step' query arg to /render API or by sending the desired interval via 'Storage-Step' http header during querying /render API (default 10s)
   -search.ignoreExtraFiltersAtLabelsAPI
-     Whether to ignore match[], extra_filters[] and extra_label query args at /api/v1/labels and /api/v1/label/.../values . This may be useful for decreasing load on VictoriaMetrics when extra filters match too many time series. The downside is that suprflouos labels or series could be returned, which do not match the extra filters. See also -search.maxLabelsAPISeries and -search.maxLabelsAPIDuration
+     Whether to ignore match[], extra_filters[] and extra_label query args at /api/v1/labels and /api/v1/label/.../values . This may be useful for decreasing load on VictoriaMetrics when extra filters match too many time series. The downside is that superfluous labels or series could be returned, which do not match the extra filters. See also -search.maxLabelsAPISeries and -search.maxLabelsAPIDuration
   -search.latencyOffset duration
      The time when data points become visible in query results after the collection. It can be overridden on per-query basis via latency_offset arg. Too small value can result in incomplete last points for query results (default 30s)
+  -search.logImplicitConversion
+     Whether to log queries with implicit subquery conversions, see https://docs.victoriametrics.com/metricsql/#subqueries for details. Such conversion can be disabled using -search.disableImplicitConversion
   -search.logQueryMemoryUsage size
      Log query and increment vm_memory_intensive_queries_total metric each time the query requires more memory than specified by this flag. This may help detecting and optimizing heavy queries. Query logging is disabled by default. See also -search.logSlowQueryDuration and -search.maxMemoryPerQuery
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 0)
@@ -3134,7 +3184,7 @@ Pass `-help` to VictoriaMetrics in order to see the list of supported command-li
   -search.maxPointsSubqueryPerTimeseries int
      The maximum number of points per series, which can be generated by subquery. See https://valyala.medium.com/prometheus-subqueries-in-victoriametrics-9b1492b720b3 (default 100000)
   -search.maxQueryDuration duration
-     The maximum duration for query execution (default 30s)
+     The maximum duration for query execution. It can be overridden on a per-query basis via 'timeout' query arg (default 30s)
   -search.maxQueryLen size
      The maximum search query length in bytes
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 16384)

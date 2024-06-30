@@ -21,7 +21,16 @@ func (pf *pipeFieldValues) String() string {
 	return s
 }
 
+func (pf *pipeFieldValues) canLiveTail() bool {
+	return false
+}
+
 func (pf *pipeFieldValues) updateNeededFields(neededFields, unneededFields fieldsSet) {
+	if neededFields.isEmpty() {
+		neededFields.add(pf.field)
+		return
+	}
+
 	if neededFields.contains("*") {
 		neededFields.reset()
 		if !unneededFields.contains(pf.field) {

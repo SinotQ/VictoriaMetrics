@@ -487,6 +487,14 @@ and attaches `instance`, `job` and other target-specific labels to these metrics
   scrape_duration_seconds > 1.5
   ```
 
+* `scrape_response_size_bytes` - response size in bytes for the given target. This allows to monitor amount of data scraped
+  and to adjust `max_scrape_size` for scraped targets. For example, the following [MetricsQL query](https://docs.victoriametrics.com/metricsql/)
+  returns targets with scrape response > 10MiB:
+
+  ```metricsql
+  max_scrape_size > 10MiB
+  ```
+
 * `scrape_timeout_seconds` - the configured timeout for the current scrape target (aka `scrape_timeout`).
   This allows detecting targets with scrape durations close to the configured scrape timeout.
   For example, the following [MetricsQL query](https://docs.victoriametrics.com/metricsql/) returns targets (identified by `instance` label),
@@ -508,7 +516,7 @@ and attaches `instance`, `job` and other target-specific labels to these metrics
   The limit can be set via `sample_limit` option at [scrape_configs](https://docs.victoriametrics.com/sd_configs/#scrape_configs).
   This metric is exposed only if the `sample_limit` is set. This allows detecting targets,
   which expose too many metrics compared to the configured `sample_limit`. For example, the following query
-  returns targets (identified by `instance` label), which expose more than 80% metrics compared to the configed `sample_limit`:
+  returns targets (identified by `instance` label), which expose more than 80% metrics compared to the configured `sample_limit`:
 
   ```metricsql
   scrape_samples_scraped / scrape_samples_limit > 0.8
@@ -596,7 +604,7 @@ All the files with relabeling configs can contain special placeholders in the fo
 which are replaced by the corresponding environment variable values.
 
 [Streaming aggregation](https://docs.victoriametrics.com/stream-aggregation/), if configured,
-is pefrormed after applying all the relabeling stages mentioned above.
+is performed after applying all the relabeling stages mentioned above.
 
 The following articles contain useful information about Prometheus relabeling:
 
@@ -1330,7 +1338,7 @@ See also [how to write metrics to multiple distinct tenants](https://docs.victor
 
 `vmagent` can read messages from different topics in different formats. For example, the following command starts `vmagent`, which reads plaintext
 [Influx](https://docs.influxdata.com/influxdb/cloud/reference/syntax/line-protocol/) messages from `telegraf-testing` topic
-and gzipp'ed [JSON line](https://docs.victoriametrics.com/#json-line-format) messages from `json-line-testing` topic:
+and gzipped [JSON line](https://docs.victoriametrics.com/#json-line-format) messages from `json-line-testing` topic:
 
 ```sh
 ./bin/vmagent -remoteWrite.url=http://localhost:8428/api/v1/write \
@@ -1363,13 +1371,13 @@ which can be downloaded for evaluation from [releases](https://github.com/Victor
         Enables gzip decompression for messages payload at the corresponding -gcp.pubsub.subscribe.topicSubscription. Only prometheus, jsonline, graphite and influx formats accept gzipped messages. See https://docs.victoriametrics.com/vmagent/#reading-metrics-from-pubsub . This flag is available only in Enterprise binaries. See https://docs.victoriametrics.com/enterprise/
         Supports array of values separated by comma or specified via multiple flags.
   -gcp.pubsub.subscribe.topicSubscription.messageFormat array
-        Message format for the corresponding -gcp.pbusub.subcribe.topicSubscription. Valid formats: influx, prometheus, promremotewrite, graphite, jsonline . See https://docs.victoriametrics.com/vmagent/#reading-metrics-from-pubsub . This flag is available only in Enterprise binaries. See https://docs.victoriametrics.com/enterprise/
+        Message format for the corresponding -gcp.pubsub.subscribe.topicSubscription. Valid formats: influx, prometheus, promremotewrite, graphite, jsonline . See https://docs.victoriametrics.com/vmagent/#reading-metrics-from-pubsub . This flag is available only in Enterprise binaries. See https://docs.victoriametrics.com/enterprise/
         Supports an array of values separated by comma or specified via multiple flags.
 ```
 
 ### Writing metrics to PubSub
 
-[Enterprise version](https://docs.victoriametrics.com/enterprise/) of `vmagent` writes data into Google PubSub if `-remoteWrite.url` command-line flag starts witht `pubsub:` prefix.
+[Enterprise version](https://docs.victoriametrics.com/enterprise/) of `vmagent` writes data into Google PubSub if `-remoteWrite.url` command-line flag starts with `pubsub:` prefix.
 For example, `-remoteWrite.url=pubsub:projects/victoriametrics-vmagent-publish-test/topics/testing-pubsub-push`.
 
 These messages can be read later from Google PubSub by another `vmagent` instance - see [these docs](#reading-metrics-from-pubsub) for details.
@@ -1638,7 +1646,7 @@ See the docs at https://docs.victoriametrics.com/vmagent/ .
   -cacheExpireDuration duration
      Items are removed from in-memory caches after they aren't accessed for this duration. Lower values may reduce memory usage at the cost of higher CPU usage. See also -prevCacheRemovalPercent (default 30m0s)
   -configAuthKey value
-     Authorization key for accessing /config page. It must be passed via authKey query arg
+     Authorization key for accessing /config page. It must be passed via authKey query arg. It overrides httpAuth.* settings.
      Flag value can be read from the given file when using -configAuthKey=file:///abs/path/to/file or -configAuthKey=file://./relative/path/to/file . Flag value can be read from the given http/https url when using -configAuthKey=http://host/path or -configAuthKey=https://host/path
   -csvTrimTimestamp duration
      Trim timestamps when importing csv data to this duration. Minimum practical duration is 1ms. Higher duration (i.e. 1s) may be used for reducing disk space usage for timestamp data (default 1ms)
@@ -1701,7 +1709,7 @@ See the docs at https://docs.victoriametrics.com/vmagent/ .
      Supports array of values separated by comma or specified via multiple flags.
      Empty values are set to false.
   -gcp.pubsub.subscribe.topicSubscription.messageFormat array
-     Message format for the corresponding -gcp.pbusub.subcribe.topicSubscription. Valid formats: influx, prometheus, promremotewrite, graphite, jsonline . See https://docs.victoriametrics.com/vmagent/#reading-metrics-from-pubsub . This flag is available only in Enterprise binaries. See https://docs.victoriametrics.com/enterprise/
+     Message format for the corresponding -gcp.pubsub.subscribe.topicSubscription. Valid formats: influx, prometheus, promremotewrite, graphite, jsonline . See https://docs.victoriametrics.com/vmagent/#reading-metrics-from-pubsub . This flag is available only in Enterprise binaries. See https://docs.victoriametrics.com/enterprise/
      Supports an array of values separated by comma or specified via multiple flags.
      Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -graphiteListenAddr string
@@ -1816,9 +1824,9 @@ See the docs at https://docs.victoriametrics.com/vmagent/ .
      Supports an array of values separated by comma or specified via multiple flags.
      Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -license string
-     Lisense key for VictoriaMetrics Enterprise. See https://victoriametrics.com/products/enterprise/ . Trial Enterprise license can be obtained from https://victoriametrics.com/products/enterprise/trial/ . This flag is available only in Enterprise binaries. The license key can be also passed via file specified by -licenseFile command-line flag
+     License key for VictoriaMetrics Enterprise. See https://victoriametrics.com/products/enterprise/ . Trial Enterprise license can be obtained from https://victoriametrics.com/products/enterprise/trial/ . This flag is available only in Enterprise binaries. The license key can be also passed via file specified by -licenseFile command-line flag
   -license.forceOffline
-     Whether to enable offline verification for VictoriaMetrics Enterprise license key, which has been passed either via -license or via -licenseFile command-line flag. The issued license key must support offline verification feature. Contact info@victoriametrics.com if you need offline license verification. This flag is avilable only in Enterprise binaries
+     Whether to enable offline verification for VictoriaMetrics Enterprise license key, which has been passed either via -license or via -licenseFile command-line flag. The issued license key must support offline verification feature. Contact info@victoriametrics.com if you need offline license verification. This flag is available only in Enterprise binaries
   -licenseFile string
      Path to file with license key for VictoriaMetrics Enterprise. See https://victoriametrics.com/products/enterprise/ . Trial Enterprise license can be obtained from https://victoriametrics.com/products/enterprise/trial/ . This flag is available only in Enterprise binaries. The license key can be also passed inline via -license command-line flag
   -loggerDisableTimestamps
@@ -1956,7 +1964,7 @@ See the docs at https://docs.victoriametrics.com/vmagent/ .
   -promscrape.kumaSDCheckInterval duration
      Interval for checking for changes in kuma service discovery. This works only if kuma_sd_configs is configured in '-promscrape.config' file. See https://docs.victoriametrics.com/sd_configs/#kuma_sd_configs for details (default 30s)
   -promscrape.maxDroppedTargets int
-     The maximum number of droppedTargets to show at /api/v1/targets page. Increase this value if your setup drops more scrape targets during relabeling and you need investigating labels for all the dropped targets. Note that the increased number of tracked dropped targets may result in increased memory usage (default 1000)
+     The maximum number of droppedTargets to show at /api/v1/targets page. Increase this value if your setup drops more scrape targets during relabeling and you need investigating labels for all the dropped targets. Note that the increased number of tracked dropped targets may result in increased memory usage (default 10000)
   -promscrape.maxResponseHeadersSize size
      The maximum size of http response headers from Prometheus scrape targets
      Supports the following optional suffixes for size values: KB, MB, GB, TB, KiB, MiB, GiB, TiB (default 4096)
@@ -2007,7 +2015,7 @@ See the docs at https://docs.victoriametrics.com/vmagent/ .
      Supports an array of values separated by comma or specified via multiple flags.
      Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -reloadAuthKey value
-     Auth key for /-/reload http endpoint. It must be passed as authKey=...
+     Auth key for /-/reload http endpoint. It must be passed via authKey query arg. It overrides httpAuth.* settings.
      Flag value can be read from the given file when using -reloadAuthKey=file:///abs/path/to/file or -reloadAuthKey=file://./relative/path/to/file . Flag value can be read from the given http/https url when using -reloadAuthKey=http://host/path or -reloadAuthKey=https://host/path
   -remoteWrite.aws.accessKey array
      Optional AWS AccessKey to use for the corresponding -remoteWrite.url if -remoteWrite.aws.useSigv4 is set
@@ -2200,7 +2208,7 @@ See the docs at https://docs.victoriametrics.com/vmagent/ .
      Supports an array of values separated by comma or specified via multiple flags.
      Value can contain comma inside single-quoted or double-quoted string, {}, [] and () braces.
   -remoteWrite.tlsHandshakeTimeout array
-     The timeout for estabilishing tls connections to the corresponding -remoteWrite.url (default 20s)
+     The timeout for establishing tls connections to the corresponding -remoteWrite.url (default 20s)
      Supports array of values separated by comma or specified via multiple flags.
      Empty values are set to default value.
   -remoteWrite.tlsInsecureSkipVerify array

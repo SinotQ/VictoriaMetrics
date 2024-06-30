@@ -17,7 +17,7 @@ aliases:
 
 [VictoriaLogs](https://docs.victoriametrics.com/victorialogs/) works with both structured and unstructured logs.
 Every log entry must contain at least [log message field](#message-field) plus arbitrary number of additional `key=value` fields.
-A single log entry can be expressed as a single-level [JSON](https://www.json.org/json-en.html) object with string keys and values.
+A single log entry can be expressed as a single-level [JSON](https://www.json.org/json-en.html) object with string keys and string values.
 For example:
 
 ```json
@@ -28,6 +28,30 @@ For example:
   "client_ip": "1.2.3.4",
   "trace_id": "1234-56789-abcdef",
   "_msg": "failed to serve the client request"
+}
+```
+
+Empty values are treated the same as non-existing values. For example, the following log entries are equivalent,
+since they have only one identical non-empty field - [`_msg`](#message-field):
+
+```json
+{
+  "_msg": "foo bar",
+  "some_field": "",
+  "another_field": ""
+}
+```
+
+```json
+{
+  "_msg": "foo bar",
+  "third_field": "",
+}
+```
+
+```json
+{
+  "_msg": "foo bar",
 }
 ```
 
@@ -81,7 +105,7 @@ Unicode chars must be encoded with [UTF-8](https://en.wikipedia.org/wiki/UTF-8) 
 
 ```json
 {
-  "field with whitepsace": "value\nwith\nnewlines",
+  "field with whitespace": "value\nwith\nnewlines",
   "Поле": "价值",
 }
 ```
@@ -137,7 +161,7 @@ the search to a particular time range.
 
 ### Stream fields
 
-Some [structured logging](#data-model) fields may uniquely identify the application instance, which generates log entries.
+Some [structured logging](#data-model) fields may uniquely identify the application instance, which generates logs.
 This may be either a single field such as `instance="host123:456"` or a set of fields such as
 `{datacenter="...", env="...", job="...", instance="..."}` or
 `{kubernetes.namespace="...", kubernetes.node.name="...", kubernetes.pod.name="...", kubernetes.container.name="..."}`.
@@ -152,16 +176,18 @@ This provides the following benefits:
 - Increased query performance, since VictoriaLogs needs to scan lower amounts of data
   when [searching by stream fields](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter).
 
-Every ingested log entry is associated with a log stream. The name of this stream is stored in `_stream` field.
-This field has the format similar to [labels in Prometheus metrics](https://docs.victoriametrics.com/keyconcepts/#labels):
+Every ingested log entry is associated with a log stream. Every log stream consists of two fields:
 
-```
-{field1="value1", ..., fieldN="valueN"}
-```
+- `_stream_id` - this is an unique identifier for the log stream. All the logs for the particular stream can be selected
+  via [`_stream_id:...` filter](https://docs.victoriametrics.com/victorialogs/logsql/#_stream_id-filter).
 
-For example, if `host` and `app` fields are associated with the stream, then the `_stream` field will have `{host="host-123",app="my-app"}` value
-for the log entry with `host="host-123"` and `app="my-app"` fields. The `_stream` field can be searched
-with [stream filters](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter).
+- `_stream` - this field contains stream labels in the format similar to [labels in Prometheus metrics](https://docs.victoriametrics.com/keyconcepts/#labels):
+  ```
+  {field1="value1", ..., fieldN="valueN"}
+  ```
+  For example, if `host` and `app` fields are associated with the stream, then the `_stream` field will have `{host="host-123",app="my-app"}` value
+  for the log entry with `host="host-123"` and `app="my-app"` fields. The `_stream` field can be searched
+  with [stream filters](https://docs.victoriametrics.com/victorialogs/logsql/#stream-filter).
 
 By default the value of `_stream` field is `{}`, since VictoriaLogs cannot determine automatically,
 which fields uniquely identify every log stream. This may lead to not-so-optimal resource usage and query performance.
@@ -179,7 +205,7 @@ For example, if logs from Kubernetes containers have the following fields:
 }
 ```
 
-then sepcify `_stream_fields=kubernetes.namespace,kubernetes.node.name,kubernetes.pod.name,kubernetes.container.name`
+then specify `_stream_fields=kubernetes.namespace,kubernetes.node.name,kubernetes.pod.name,kubernetes.container.name`
 query arg during [data ingestion](https://docs.victoriametrics.com/victorialogs/data-ingestion/) in order to properly store
 per-container logs into distinct streams.
 
@@ -194,7 +220,7 @@ makes sense if you are going to use these fields during search and want speeding
 
 There is **no need to add all the constant fields to log streams**, since this may increase resource usage during data ingestion and querying.
 
-**Never add non-nonstant fields to streams if these fields may change with every log entry of the same stream**.
+**Never add non-constant fields to streams if these fields may change with every log entry of the same stream**.
 For example, `ip`, `user_id` and `trace_id` **must never be associated with log streams**, since this may lead to [high cardinality issues](#high-cardinality).
 
 #### High cardinality
@@ -221,7 +247,7 @@ This can help narrowing down and eliminating high-cardinality fields from [log s
 ### Other fields
 
 Every ingested log entry may contain arbitrary number of [fields](#data-model) additionally to [`_msg`](#message-field) and [`_time`](#time-field).
-For example, `level`, `ip`, `user_id`, `trace_id`, etc. Such fields can be used for simplifying and optimizing [search queries](#https://docs.victoriametrics.com/victorialogs/logsql/).
+For example, `level`, `ip`, `user_id`, `trace_id`, etc. Such fields can be used for simplifying and optimizing [search queries](https://docs.victoriametrics.com/victorialogs/logsql/).
 It is usually faster to search over a dedicated `trace_id` field instead of searching for the `trace_id` inside long [log message](#message-field).
 E.g. the `trace_id:="XXXX-YYYY-ZZZZ"` query usually works faster than the `_msg:"trace_id=XXXX-YYYY-ZZZZ"` query.
 

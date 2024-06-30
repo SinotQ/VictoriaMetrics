@@ -7,7 +7,11 @@ import (
 )
 
 func TestFilterIn(t *testing.T) {
+	t.Parallel()
+
 	t.Run("single-row", func(t *testing.T) {
+		t.Parallel()
+
 		columns := []column{
 			{
 				name: "foo",
@@ -75,6 +79,8 @@ func TestFilterIn(t *testing.T) {
 	})
 
 	t.Run("const-column", func(t *testing.T) {
+		t.Parallel()
+
 		columns := []column{
 			{
 				name: "foo",
@@ -126,6 +132,8 @@ func TestFilterIn(t *testing.T) {
 	})
 
 	t.Run("dict", func(t *testing.T) {
+		t.Parallel()
+
 		columns := []column{
 			{
 				name: "foo",
@@ -181,6 +189,8 @@ func TestFilterIn(t *testing.T) {
 	})
 
 	t.Run("strings", func(t *testing.T) {
+		t.Parallel()
+
 		columns := []column{
 			{
 				name: "foo",
@@ -233,6 +243,8 @@ func TestFilterIn(t *testing.T) {
 	})
 
 	t.Run("uint8", func(t *testing.T) {
+		t.Parallel()
+
 		columns := []column{
 			{
 				name: "foo",
@@ -298,6 +310,8 @@ func TestFilterIn(t *testing.T) {
 	})
 
 	t.Run("uint16", func(t *testing.T) {
+		t.Parallel()
+
 		columns := []column{
 			{
 				name: "foo",
@@ -363,6 +377,8 @@ func TestFilterIn(t *testing.T) {
 	})
 
 	t.Run("uint32", func(t *testing.T) {
+		t.Parallel()
+
 		columns := []column{
 			{
 				name: "foo",
@@ -428,6 +444,8 @@ func TestFilterIn(t *testing.T) {
 	})
 
 	t.Run("uint64", func(t *testing.T) {
+		t.Parallel()
+
 		columns := []column{
 			{
 				name: "foo",
@@ -487,6 +505,8 @@ func TestFilterIn(t *testing.T) {
 	})
 
 	t.Run("float64", func(t *testing.T) {
+		t.Parallel()
+
 		columns := []column{
 			{
 				name: "foo",
@@ -568,6 +588,8 @@ func TestFilterIn(t *testing.T) {
 	})
 
 	t.Run("ipv4", func(t *testing.T) {
+		t.Parallel()
+
 		columns := []column{
 			{
 				name: "foo",
@@ -634,6 +656,8 @@ func TestFilterIn(t *testing.T) {
 	})
 
 	t.Run("timestamp-iso8601", func(t *testing.T) {
+		t.Parallel()
+
 		columns := []column{
 			{
 				name: "_msg",
@@ -716,6 +740,6 @@ func TestGetCommonTokensAndTokenSets(t *testing.T) {
 	f([]string{"foo", "foo"}, []string{"foo"}, nil)
 	f([]string{"foo", "bar", "bar", "foo"}, nil, [][]string{{"foo"}, {"bar"}, {"bar"}, {"foo"}})
 	f([]string{"foo", "foo bar", "bar foo"}, []string{"foo"}, nil)
-	f([]string{"a foo bar", "bar abc foo", "foo abc a bar"}, []string{"bar", "foo"}, nil)
+	f([]string{"a foo bar", "bar abc foo", "foo abc a bar"}, []string{"bar", "foo"}, [][]string{{"a"}, {"abc"}, {"a", "abc"}})
 	f([]string{"a xfoo bar", "xbar abc foo", "foo abc a bar"}, nil, [][]string{{"a", "bar", "xfoo"}, {"abc", "foo", "xbar"}, {"a", "abc", "bar", "foo"}})
 }

@@ -83,6 +83,7 @@ type UserInfo struct {
 
 	concurrencyLimitCh      chan struct{}
 	concurrencyLimitReached *metrics.Counter
+	overrideHostHeader      bool
 
 	rt http.RoundTripper
 
@@ -147,6 +148,15 @@ func (h *Header) UnmarshalYAML(f func(interface{}) error) error {
 // MarshalYAML marshals h to yaml.
 func (h *Header) MarshalYAML() (interface{}, error) {
 	return h.sOriginal, nil
+}
+
+func overrideHostHeader(headers []*Header) bool {
+	for _, h := range headers {
+		if h.Name == "Host" && h.Value == "" {
+			return true
+		}
+	}
+	return false
 }
 
 // URLMap is a mapping from source paths to target urls.
@@ -353,7 +363,7 @@ func (up *URLPrefix) discoverBackendAddrsIfNeeded() {
 				logger.Warnf("cannot discover backend SRV records for %s: %s; use it literally", bu, err)
 				resolvedAddrs = []string{host}
 			} else {
-				resolvedAddrs := make([]string, len(addrs))
+				resolvedAddrs = make([]string, len(addrs))
 				for i, addr := range addrs {
 					resolvedAddrs[i] = fmt.Sprintf("%s:%d", addr.Target, addr.Port)
 				}
@@ -380,6 +390,7 @@ func (up *URLPrefix) discoverBackendAddrsIfNeeded() {
 	var busNew []*backendURL
 	for _, bu := range up.busOriginal {
 		host := bu.Hostname()
+		host = strings.TrimPrefix(host, "srv+")
 		port := bu.Port()
 		for _, addr := range hostToAddrs[host] {
 			buCopy := *bu
@@ -737,6 +748,7 @@ func parseAuthConfig(data []byte) (*AuthConfig, error) {
 		if err := ui.initURLs(); err != nil {
 			return nil, err
 		}
+		ui.overrideHostHeader = overrideHostHeader(ui.HeadersConf.RequestHeaders)
 
 		metricLabels, err := ui.getMetricLabels()
 		if err != nil {
@@ -801,6 +813,7 @@ func parseAuthConfigUsers(ac *AuthConfig) (map[string]*UserInfo, error) {
 		_ = ac.ms.GetOrCreateGauge(`vmauth_user_concurrent_requests_current`+metricLabels, func() float64 {
 			return float64(len(ui.concurrencyLimitCh))
 		})
+		ui.overrideHostHeader = overrideHostHeader(ui.HeadersConf.RequestHeaders)
 
 		rt, err := newRoundTripper(ui.TLSCAFile, ui.TLSCertFile, ui.TLSKeyFile, ui.TLSServerName, ui.TLSInsecureSkipVerify)
 		if err != nil {
@@ -1011,6 +1024,8 @@ func (up *URLPrefix) sanitizeAndInitialize() error {
 		}
 	}
 	up.bus.Store(&bus)
+	up.nextDiscoveryDeadline.Store(0)
+	up.n.Store(0)
 
 	return nil
 }

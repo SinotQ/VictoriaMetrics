@@ -9,7 +9,7 @@ menu:
 aliases:
 - /anomaly-detection/guides/guide-vmanomaly-vmalert.html
 - /guides/guide-vmanomaly-vmalert.html
-- /gides/vmanomaly-integration.html
+- /guides/vmanomaly-integration.html
 - /guides/anomaly-detection-and-alerting-setup.html
 
 ---
@@ -26,9 +26,11 @@ aliases:
 - [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/)
 - [Node exporter](https://github.com/prometheus/node_exporter#node-exporter) (v1.7.0) and [Alertmanager](https://prometheus.io/docs/alerting/latest/alertmanager/) (v0.27.0)
 
-<img src="guide-vmanomaly-vmalert_overview.webp" alt="vmanomaly typical setup diagramm">
+<img src="guide-vmanomaly-vmalert_overview.webp" alt="vmanomaly typical setup diagram">
 
 > **Note: Configurations used throughout this guide can be found [here](https://github.com/VictoriaMetrics/VictoriaMetrics/tree/master/deployment/docker/vmanomaly/vmanomaly-integration/)**
+
+> **Note:** Starting from [v1.13.0](/anomaly-detection/CHANGELOG#v1130) `node-exporter` observability preset is available for `vmanomaly`. Please find the guide [here](/anomaly-detection/presets/#node-exporter).
 
 ## 1. What is vmanomaly?
 
@@ -151,14 +153,14 @@ Below is an illustrative example of a `vmanomaly_config.yml` configuration file.
 ``` yaml
 schedulers:
   periodic:
-    # class: "scheduler.periodic.PeriodicScheduler"
+    # class: 'periodic'  # or "scheduler.periodic.PeriodicScheduler" until v1.13.0
     infer_every: "1m"
     fit_every: "2m"
     fit_window: "3h"
 
 models:
   prophet:
-    class: "model.prophet.ProphetModel"
+    class: "prophet"  # or "model.prophet.ProphetModel" until v1.13.0
     args:
       interval_width: 0.98
 
@@ -189,7 +191,7 @@ As the result of running vmanomaly, it produces the following metrics:
 - `y` - initial query result value.
 
 Here is an example of how output metric will be written into VictoriaMetrics:
-`anomaly_score{for="node_cpu_rate", instance="node-xporter:9100", job="node-exporter", mode="idle"} 0.85`
+`anomaly_score{for="node_cpu_rate", instance="node-exporter:9100", job="node-exporter", mode="idle"} 0.85`
 
 
 ## 7. vmalert configuration
@@ -526,3 +528,5 @@ Key takeaways include:
 4. **Alert Configuration**: We've shown how to set up and customize alerting rules in `vmalert` based on produced anomaly scores, enabling proactive monitoring and timely response to potential issues.
 
 As you continue to use VictoriaMetrics Anomaly Detection and `vmalert`, remember that the effectiveness of anomaly detection largely depends on the appropriateness of the model chosen, the accuracy of configurations and the data patterns observed. This guide serves as a starting point, and we encourage you to experiment with different configurations and models to best suit your specific data needs and use cases. In case you need a helping hand - [contact us](https://victoriametrics.com/contact-us/).
+
+> **Note:** Starting from [v1.13.0](/anomaly-detection/CHANGELOG#v1130) `node-exporter` observability preset is available for `vmanomaly`. Please find the guide [here](/anomaly-detection/presets/#node-exporter).

@@ -32,6 +32,10 @@ func (pu *pipeUnroll) String() string {
 	return s
 }
 
+func (pu *pipeUnroll) canLiveTail() bool {
+	return true
+}
+
 func (pu *pipeUnroll) optimize() {
 	pu.iff.optimizeFilterIn()
 }
@@ -52,25 +56,15 @@ func (pu *pipeUnroll) initFilterInValues(cache map[string][]string, getFieldValu
 
 func (pu *pipeUnroll) updateNeededFields(neededFields, unneededFields fieldsSet) {
 	if neededFields.contains("*") {
-		unneededFieldsCount := 0
-		for _, f := range pu.fields {
-			if unneededFields.contains(f) {
-				unneededFieldsCount++
-			}
-		}
-		if unneededFieldsCount < len(pu.fields) && pu.iff != nil {
+		if pu.iff != nil {
 			unneededFields.removeFields(pu.iff.neededFields)
 		}
+		unneededFields.removeFields(pu.fields)
 	} else {
-		needIfFields := false
-		for _, f := range pu.fields {
-			if neededFields.contains(f) {
-				needIfFields = true
-			}
-		}
-		if needIfFields && pu.iff != nil {
+		if pu.iff != nil {
 			neededFields.addFields(pu.iff.neededFields)
 		}
+		neededFields.addFields(pu.fields)
 	}
 }
 

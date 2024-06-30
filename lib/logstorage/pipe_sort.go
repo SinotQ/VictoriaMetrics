@@ -55,7 +55,15 @@ func (ps *pipeSort) String() string {
 	return s
 }
 
+func (ps *pipeSort) canLiveTail() bool {
+	return false
+}
+
 func (ps *pipeSort) updateNeededFields(neededFields, unneededFields fieldsSet) {
+	if neededFields.isEmpty() {
+		return
+	}
+
 	if len(ps.byFields) == 0 {
 		neededFields.add("*")
 		unneededFields.reset()
@@ -721,9 +729,12 @@ func parsePipeSort(lex *lexer) (*pipeSort, error) {
 		ps.byFields = bfs
 	}
 
-	if lex.isKeyword("desc") {
+	switch {
+	case lex.isKeyword("desc"):
 		lex.nextToken()
 		ps.isDesc = true
+	case lex.isKeyword("asc"):
+		lex.nextToken()
 	}
 
 	for {
@@ -793,9 +804,12 @@ func parseBySortFields(lex *lexer) ([]*bySortField, error) {
 		bf := &bySortField{
 			name: fieldName,
 		}
-		if lex.isKeyword("desc") {
+		switch {
+		case lex.isKeyword("desc"):
 			lex.nextToken()
 			bf.isDesc = true
+		case lex.isKeyword("asc"):
+			lex.nextToken()
 		}
 		bfs = append(bfs, bf)
 		switch {

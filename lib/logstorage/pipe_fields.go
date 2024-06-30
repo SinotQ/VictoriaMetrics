@@ -25,10 +25,15 @@ func (pf *pipeFields) String() string {
 	return "fields " + fieldNamesString(pf.fields)
 }
 
+func (pf *pipeFields) canLiveTail() bool {
+	return true
+}
+
 func (pf *pipeFields) updateNeededFields(neededFields, unneededFields fieldsSet) {
 	if pf.containsStar {
 		return
 	}
+
 	if neededFields.contains("*") {
 		// subtract unneeded fields from pf.fields
 		neededFields.reset()

@@ -2,6 +2,7 @@ package logstorage
 
 import (
 	"fmt"
+	"math"
 	"strconv"
 	"unsafe"
 
@@ -42,7 +43,18 @@ func (pf *pipeFormat) String() string {
 	return s
 }
 
+func (pf *pipeFormat) canLiveTail() bool {
+	return true
+}
+
 func (pf *pipeFormat) updateNeededFields(neededFields, unneededFields fieldsSet) {
+	if neededFields.isEmpty() {
+		if pf.iff != nil {
+			neededFields.addFields(pf.iff.neededFields)
+		}
+		return
+	}
+
 	if neededFields.contains("*") {
 		if !unneededFields.contains(pf.resultField) {
 			if !pf.keepOriginalFields && !pf.skipEmptyResults {
@@ -178,9 +190,31 @@ func (shard *pipeFormatProcessorShard) formatRow(pf *pipeFormat, br *blockResult
 		if step.field != "" {
 			c := br.getColumnByName(step.field)
 			v := c.getValueAtRow(br, rowIdx)
-			if step.fieldOpt == "q" {
+			switch step.fieldOpt {
+			case "q":
 				b = strconv.AppendQuote(b, v)
-			} else {
+			case "time":
+				nsecs, ok := tryParseInt64(v)
+				if !ok {
+					b = append(b, v...)
+					continue
+				}
+				b = marshalTimestampRFC3339NanoString(b, nsecs)
+			case "duration":
+				nsecs, ok := tryParseInt64(v)
+				if !ok {
+					b = append(b, v...)
+					continue
+				}
+				b = marshalDurationString(b, nsecs)
+			case "ipv4":
+				ipNum, ok := tryParseUint64(v)
+				if !ok || ipNum > math.MaxUint32 {
+					b = append(b, v...)
+					continue
+				}
+				b = marshalIPv4String(b, uint32(ipNum))
+			default:
 				b = append(b, v...)
 			}
 		}
