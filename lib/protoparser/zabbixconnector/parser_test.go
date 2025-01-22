@@ -1,14 +1,19 @@
 package zabbixconnector
 
 import (
+	"flag"
 	"fmt"
+	"os"
 	"reflect"
 	"testing"
 )
 
 func TestRowsUnmarshalFailure(t *testing.T) {
-	f := func(s string) {
+	f := func(s string, fl []string) {
 		t.Helper()
+
+		os.Args = fl
+		flag.Parse()
 
 		var rows Rows
 		rows.Unmarshal(s)
@@ -23,85 +28,75 @@ func TestRowsUnmarshalFailure(t *testing.T) {
 		}
 	}
 
-	originalAddGroups := *addGroups
-	originalTagValuePlaceholder := *tagValuePlaceholder
-	originalDuplicateTagsSeparator := *duplicateTagsSeparator
-	defer func() {
-		*addGroups = originalAddGroups
-		*tagValuePlaceholder = originalTagValuePlaceholder
-		*duplicateTagsSeparator = originalDuplicateTagsSeparator
-	}()
-
-	// Add groups and empty tags
-	*addGroups = true
-	*tagValuePlaceholder = "1"
-	*duplicateTagsSeparator = ""
-
+	par := []string{"test", "-zabbixconnector.addGroups", "1", "-zabbixconnector.addEmptyTags", "1", "-zabbixconnector.mergeDuplicateTags", ""}
 	// Invalid json line
-	f("")
-	f("\n")
-	f("foo\n")
-	f("123")
-	f("[1,3]")
-	f("{}")
-	f("[]")
-	f(`{"foo":"bar"}`)
+	f("", par)
+	f("\n", par)
+	f("foo\n", par)
+	f("123", par)
+	f("[1,3]", par)
+	f("{}", par)
+	f("[]", par)
+	f(`{"foo":"bar"}`, par)
 
 	// Invalid type
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1}`)
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":"0"}`)
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":[]}`)
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":2}`)
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":10}`)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1}`, par)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":"0"}`, par)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":[]}`, par)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":2}`, par)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":10}`, par)
 
 	// Invalid host object
-	f(`{"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`)
-	f(`{"host":{"name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`)
-	f(`{"host":{"host":"h1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`)
-	f(`{"host":{"host":"h1","name":1},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`)
-	f(`{"host":{"host":"h1","name":[]},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`)
-	f(`{"host":{"host":1,"name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`)
-	f(`{"host":{"host":{},"name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`)
-	f(`{"host":"1","groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`)
-	f(`{"host":[],"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`)
+	f(`{"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
+	f(`{"host":{"name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
+	f(`{"host":{"host":"h1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
+	f(`{"host":{"host":"h1","name":1},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
+	f(`{"host":{"host":"h1","name":[]},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
+	f(`{"host":{"host":1,"name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
+	f(`{"host":{"host":{},"name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
+	f(`{"host":"1","groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
+	f(`{"host":[],"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
 
 	// Invalid item name
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"clock":1712417868,"ns":425677241,"value":1,"type":0}`)
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"","clock":1712417868,"ns":425677241,"value":1,"type":0}`)
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":1,"clock":1712417868,"ns":425677241,"value":1,"type":0}`)
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":{},"clock":1712417868,"ns":425677241,"value":1,"type":0}`)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":1,"clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":{},"clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
 
 	// Invalid item value
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"type":0}`)
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":"1","type":0}`)
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":[],"type":0}`)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"type":0}`, par)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":"1","type":0}`, par)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":[],"type":0}`, par)
 
 	// Invalid clock
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","ns":425677241,"value":1,"type":0}`)
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":"1712417868","ns":425677241,"value":1,"type":0}`)
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":[],"ns":425677241,"value":1,"type":0}`)
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1.1,"ns":425677241,"value":1,"type":0}`)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","ns":425677241,"value":1,"type":0}`, par)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":"1712417868","ns":425677241,"value":1,"type":0}`, par)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":[],"ns":425677241,"value":1,"type":0}`, par)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1.1,"ns":425677241,"value":1,"type":0}`, par)
 
 	// Invalid ns
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"value":1,"type":0}`)
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":"425677241","value":1,"type":0}`)
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":{},"value":1,"type":0}`)
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":1.2,"value":1,"type":0}`)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"value":1,"type":0}`, par)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":"425677241","value":1,"type":0}`, par)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":{},"value":1,"type":0}`, par)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":1.2,"value":1,"type":0}`, par)
 
 	// Invalit groups
-	f(`{"host":{"host":"h1","name":"n1"},"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`)
-	f(`{"host":{"host":"h1","name":"n1"},"groups":1,"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`)
-	f(`{"host":{"host":"h1","name":"n1"},"groups":{},"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`)
+	f(`{"host":{"host":"h1","name":"n1"},"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":1,"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":{},"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
 
 	// Invalid item_tags
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`)
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":1,"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`)
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":{},"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":1,"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":{},"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par)
 }
 
 func TestRowsUnmarshalSuccess(t *testing.T) {
-	f := func(s string, rowsExpected *Rows) {
+	f := func(s string, fl []string, rowsExpected *Rows) {
 		t.Helper()
+
+		os.Args = fl
+		flag.Parse()
 
 		var rows Rows
 		rows.Unmarshal(s)
@@ -122,27 +117,15 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 		}
 	}
 
-	originalAddGroups := *addGroups
-	originalTagValuePlaceholder := *tagValuePlaceholder
-	originalDuplicateTagsSeparator := *duplicateTagsSeparator
-	defer func() {
-		*addGroups = originalAddGroups
-		*tagValuePlaceholder = originalTagValuePlaceholder
-		*duplicateTagsSeparator = originalDuplicateTagsSeparator
-	}()
-
 	// Add groups and empty tags
-	*addGroups = true
-	*tagValuePlaceholder = "1"
-	*duplicateTagsSeparator = ""
-
+	par := []string{"test", "-zabbixconnector.addGroups", "1", "-zabbixconnector.addEmptyTags", "1", "-zabbixconnector.mergeDuplicateTags", ""}
 	// Empty line
-	f("", &Rows{})
-	f("\n\n", &Rows{})
-	f("\n\r\n", &Rows{})
+	f("", par, &Rows{})
+	f("\n\n", par, &Rows{})
+	f("\n\r\n", par, &Rows{})
 
 	// Single line with groups and empty tags
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`,
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par,
 		&Rows{
 			Rows: []Row{
 				{
@@ -161,7 +144,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 						},
 						{
 							Key:   []byte("group_g1"),
-							Value: []byte("true"),
+							Value: []byte("1"),
 						},
 						{
 							Key:   []byte("tag_tn1"),
@@ -179,7 +162,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 		})
 
 	// Single line with groups and damage tags
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":{}},{"tag":"tn2","value":""}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`,
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":{}},{"tag":"tn2","value":""}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par,
 		&Rows{
 			Rows: []Row{
 				{
@@ -198,7 +181,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 						},
 						{
 							Key:   []byte("group_g1"),
-							Value: []byte("true"),
+							Value: []byte("1"),
 						},
 						{
 							Key:   []byte("tag_tn1"),
@@ -216,7 +199,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 		})
 
 	// Single line with empty groups and empty tags
-	f(`{"host":{"host":"h1","name":"n1"},"groups":[],"item_tags":[],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`,
+	f(`{"host":{"host":"h1","name":"n1"},"groups":[],"item_tags":[],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par,
 		&Rows{
 			Rows: []Row{
 				{
@@ -243,7 +226,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 	// Multiple lines
 	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}
 	{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}
-	`,
+	`, par,
 		&Rows{
 			Rows: []Row{
 				{
@@ -262,7 +245,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 						},
 						{
 							Key:   []byte("group_g1"),
-							Value: []byte("true"),
+							Value: []byte("1"),
 						},
 						{
 							Key:   []byte("tag_tn1"),
@@ -292,7 +275,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 						},
 						{
 							Key:   []byte("group_g2"),
-							Value: []byte("true"),
+							Value: []byte("1"),
 						},
 						{
 							Key:   []byte("tag_tn1"),
@@ -309,7 +292,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}
 	failed line
 
-	{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}`,
+	{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}`, par,
 		&Rows{
 			Rows: []Row{
 				{
@@ -328,7 +311,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 						},
 						{
 							Key:   []byte("group_g1"),
-							Value: []byte("true"),
+							Value: []byte("1"),
 						},
 						{
 							Key:   []byte("tag_tn1"),
@@ -358,7 +341,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 						},
 						{
 							Key:   []byte("group_g2"),
-							Value: []byte("true"),
+							Value: []byte("1"),
 						},
 						{
 							Key:   []byte("tag_tn1"),
@@ -373,7 +356,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 
 	// No newline after the second line.
 	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}
-	{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}`,
+	{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}`, par,
 		&Rows{
 			Rows: []Row{
 				{
@@ -392,7 +375,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 						},
 						{
 							Key:   []byte("group_g1"),
-							Value: []byte("true"),
+							Value: []byte("1"),
 						},
 						{
 							Key:   []byte("tag_tn1"),
@@ -422,7 +405,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 						},
 						{
 							Key:   []byte("group_g2"),
-							Value: []byte("true"),
+							Value: []byte("1"),
 						},
 						{
 							Key:   []byte("tag_tn1"),
@@ -436,15 +419,12 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 		})
 
 	// Add empty tags and skip groups
-	*addGroups = false
-	*tagValuePlaceholder = "1"
-	*duplicateTagsSeparator = ""
-
+	par = []string{"test", "-zabbixconnector.addGroups", "", "-zabbixconnector.addEmptyTags", "1", "-zabbixconnector.mergeDuplicateTags", ""}
 	// Multiple lines with invalid lines in the middle.
 	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}
 	failed line
 
-	{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}`,
+	{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}`, par,
 		&Rows{
 			Rows: []Row{
 				{
@@ -499,15 +479,13 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 		})
 
 	// Add groups and skip empty tags
-	*addGroups = true
-	*tagValuePlaceholder = ""
-	*duplicateTagsSeparator = ""
+	par = []string{"test", "-zabbixconnector.addGroups", "1", "-zabbixconnector.addEmptyTags", "", "-zabbixconnector.mergeDuplicateTags", ""}
 
 	// Multiple lines with invalid lines in the middle.
 	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}
 	failed line
 
-	{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}`,
+	{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}`, par,
 		&Rows{
 			Rows: []Row{
 				{
@@ -526,7 +504,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 						},
 						{
 							Key:   []byte("group_g1"),
-							Value: []byte("true"),
+							Value: []byte("1"),
 						},
 						{
 							Key:   []byte("tag_tn1"),
@@ -552,7 +530,7 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 						},
 						{
 							Key:   []byte("group_g2"),
-							Value: []byte("true"),
+							Value: []byte("1"),
 						},
 						{
 							Key:   []byte("tag_tn1"),
@@ -566,15 +544,13 @@ func TestRowsUnmarshalSuccess(t *testing.T) {
 		})
 
 	// skip groups and empty tags
-	*addGroups = false
-	*tagValuePlaceholder = ""
-	*duplicateTagsSeparator = ""
+	par = []string{"test", "-zabbixconnector.addGroups", "", "-zabbixconnector.addEmptyTags", "", "-zabbixconnector.mergeDuplicateTags", ""}
 
 	// Multiple lines with invalid lines in the middle.
 	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}
 failed line
 
-{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}`,
+{"host":{"host":"h2","name":"n2"},"groups":["g2"],"item_tags":[{"tag":"tn1","value":"tv1"}],"itemid":2,"name":"in2","clock":1712417868,"ns":425677241,"value":1.5,"type":3}`, par,
 		&Rows{
 			Rows: []Row{
 				{
@@ -625,12 +601,9 @@ failed line
 		})
 
 	// Merge tags
-	*addGroups = true
-	*tagValuePlaceholder = "1"
-	*duplicateTagsSeparator = "__"
-
+	par = []string{"test", "-zabbixconnector.addGroups", "1", "-zabbixconnector.addEmptyTags", "1", "-zabbixconnector.mergeDuplicateTags", "__"}
 	// Single line with groups, empty tags and duplicate tags
-	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""},{"tag":"tn2","value":"tv2"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`,
+	f(`{"host":{"host":"h1","name":"n1"},"groups":["g1"],"item_tags":[{"tag":"tn1","value":"tv1"},{"tag":"tn2","value":""},{"tag":"tn2","value":"tv2"}],"itemid":1,"name":"in1","clock":1712417868,"ns":425677241,"value":1,"type":0}`, par,
 		&Rows{
 			Rows: []Row{
 				{
@@ -649,7 +622,7 @@ failed line
 						},
 						{
 							Key:   []byte("group_g1"),
-							Value: []byte("true"),
+							Value: []byte("1"),
 						},
 						{
 							Key:   []byte("tag_tn1"),

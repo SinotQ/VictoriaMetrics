@@ -12,9 +12,9 @@ import (
 )
 
 var (
-	addGroups              = flag.Bool("zabbixconnector.addGroups", false, "Enable adding Zabbix host groups to labels and set value for these labels.")
-	tagValuePlaceholder    = flag.String("zabbixconnector.tagValuePlaceholder", "", "Placeholder for tags without values. If placeholder is not set tags without values will be omitted.")
-	duplicateTagsSeparator = flag.String("zabbixconnector.duplicateTagsSeparator", "", "Enable merging of duplicate Zabbix tag values and set a separator for the values of these labels.")
+	addGroups          = flag.String("zabbixconnector.addGroups", "", "Enable adding Zabbix host groups to labels and set value for these labels.")
+	addEmptyTags       = flag.String("zabbixconnector.addEmptyTags", "", "Enable adding Zabbix tags without values to labels and set value for these labels.")
+	mergeDuplicateTags = flag.String("zabbixconnector.mergeDuplicateTags", "", "Enable merging of duplicate Zabbix tag values and set a separator for the values of these labels.")
 )
 
 // Rows represents Zabbix Connector lines.
@@ -117,7 +117,8 @@ func (r *Row) unmarshal(o *fastjson.Value) error {
 	// See https://www.zabbix.com/documentation/current/en/manual/appendix/protocols/real_time_export#item-values
 	r.Timestamp = cl*1e3 + ns/1e6
 
-	if *addGroups {
+	addGroups := []byte(*addGroups)
+	if len(addGroups) != 0 {
 		groups, err := getArray(o, "groups")
 		if err != nil {
 			return fmt.Errorf("missing `groups` element, %s", err)
@@ -131,19 +132,19 @@ func (r *Row) unmarshal(o *fastjson.Value) error {
 			tag = r.addTag()
 			tag.Key = append(tag.Key[:0], []byte("group_")...)
 			tag.Key = append(tag.Key, k...)
-			tag.Value = append(tag.Value[:0], "true"...)
+			tag.Value = append(tag.Value[:0], addGroups...)
 		}
 	}
 
-	tagValuesPlaceholder := []byte(*tagValuePlaceholder)
-	tagsSeparator := []byte(*duplicateTagsSeparator)
+	addEmptyTags := []byte(*addEmptyTags)
+	mergeDuplicateTags := []byte(*mergeDuplicateTags)
 
 	itemTags, err := getArray(o, "item_tags")
 	if err != nil {
 		return fmt.Errorf("missing `item_tags` element, %s", err)
 	}
 
-	if len(tagsSeparator) == 0 { // Do not merge tags
+	if len(mergeDuplicateTags) == 0 { // Do not merge tags
 		for _, t := range itemTags {
 			k := t.GetStringBytes("tag")
 			if len(k) == 0 {
@@ -151,14 +152,14 @@ func (r *Row) unmarshal(o *fastjson.Value) error {
 			}
 
 			v := t.GetStringBytes("value")
-			if len(v) == 0 && len(tagValuesPlaceholder) == 0 {
+			if len(v) == 0 && len(addEmptyTags) == 0 {
 				continue
 			}
 			tag = r.addTag()
 			tag.Key = append(tag.Key[:0], []byte("tag_")...)
 			tag.Key = append(tag.Key, k...)
 			if len(v) == 0 {
-				tag.Value = append(tag.Value[:0], tagValuesPlaceholder...)
+				tag.Value = append(tag.Value[:0], addEmptyTags...)
 			} else {
 				tag.Value = append(tag.Value[:0], v...)
 			}
@@ -172,20 +173,20 @@ func (r *Row) unmarshal(o *fastjson.Value) error {
 			}
 
 			v := t.GetStringBytes("value")
-			if len(v) == 0 && len(tagValuesPlaceholder) == 0 {
+			if len(v) == 0 && len(addEmptyTags) == 0 {
 				continue
 			}
 			sk := bytesutil.ToUnsafeString(k)
 			if _, ok := mapTags[sk]; !ok {
 				if len(v) == 0 {
-					mapTags[sk] = tagValuesPlaceholder
+					mapTags[sk] = addEmptyTags
 				} else {
 					mapTags[sk] = v
 				}
 			} else {
-				mapTags[sk] = append(mapTags[sk], tagsSeparator...)
+				mapTags[sk] = append(mapTags[sk], mergeDuplicateTags...)
 				if len(v) == 0 {
-					mapTags[sk] = append(mapTags[sk], tagValuesPlaceholder...)
+					mapTags[sk] = append(mapTags[sk], addEmptyTags...)
 				} else {
 					mapTags[sk] = append(mapTags[sk], v...)
 				}
