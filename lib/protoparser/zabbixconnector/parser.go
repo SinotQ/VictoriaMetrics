@@ -3,6 +3,7 @@ package zabbixconnector
 import (
 	"flag"
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/VictoriaMetrics/VictoriaMetrics/lib/bytesutil"
@@ -193,11 +194,20 @@ func (r *Row) unmarshal(o *fastjson.Value) error {
 			}
 		}
 
-		for k, v := range mapTags {
+		// Sorting merged tags
+		ks := make([]string, len(mapTags))
+		i := 0
+		for k := range mapTags {
+			ks[i] = k
+			i++
+		}
+		sort.Strings(ks)
+
+		for _, k := range ks {
 			tag = r.addTag()
 			tag.Key = append(tag.Key[:0], []byte("tag_")...)
 			tag.Key = append(tag.Key, []byte(k)...)
-			tag.Value = append(tag.Value[:0], v...)
+			tag.Value = append(tag.Value[:0], mapTags[k]...)
 		}
 	}
 
